@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -188,6 +189,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React development server
     "http://127.0.0.1:5173",
+    # "http://localhost:5174",  # React development server (alternate port)
+    # "http://127.0.0.1:5174",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True # For development only, set to False in production
@@ -237,3 +240,45 @@ STRIPE_SECRET_KEY = 'sk_test_YOUR_STRIPE_SECRET_KEY' # Replace with your actual 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# your_project/settings.py
+
+JAZZMIN_SETTINGS = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    "site_title": "My Project Admin",
+
+    # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_header": "My Project",
+
+    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_brand": "My Project",
+
+    # Logo to use for your site, must be present in static files, used for login form
+    # "site_logo": "images/logo.png", # Example path
+
+    # Welcome text on the login screen
+    "welcome_sign": "Welcome to the My Project Admin",
+
+    # Copyright on the footer
+    "copyright": "My Project Ltd",
+
+    # The model admin to search from the search bar, search model admin has to be defined in your project
+    "search_model": "auth.User",
+    
+    # Links to put along the top menu
+    "topmenu_links": [
+        # Url that gets reversed (Permissions can be added)
+        {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        # model admin to link to (Permissions checked against model)
+        {"model": "auth.User"},
+        # App with dropdown menu to all its models pages (Permissions checked against models)
+        {"app": "books"},
+    ],
+   "theme": "darkly", # e.g., "cerulean", "flatly", "sandstone", "united"
+    "theme": "flatly",
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+    },
+}

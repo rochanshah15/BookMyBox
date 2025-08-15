@@ -36,17 +36,26 @@ export const BoxProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         const formData = new FormData();
+        // Always send 'sport' as first selected sport for backend compatibility
+        if (boxData.sports && boxData.sports.length > 0) {
+            formData.append('sport', boxData.sports[0]);
+        }
         Object.keys(boxData).forEach(key => {
-            if (key === 'images') return;
-            const value = boxData[key];
-            if (Array.isArray(value)) {
+            if (key === 'images' || key === 'sport') return;
+            let value = boxData[key];
+            // For amenities, sports, rules: always send as JSON string
+            if (["amenities", "sports", "rules"].includes(key)) {
                 formData.append(key, JSON.stringify(value));
             } else if (value !== null && value !== undefined) {
                 formData.append(key, value);
             }
         });
+        // Add all images (multi-upload)
         if (boxData.images && boxData.images.length > 0) {
-            formData.append('image', boxData.images[0]);
+            boxData.images.forEach((file, idx) => {
+                formData.append('images', file); // backend should handle images as a list
+                if (idx === 0) formData.append('image', file); // first image as main
+            });
         }
         try {
             await api.post('/boxes/owner/boxes/', formData, {
@@ -68,6 +77,7 @@ export const BoxProvider = ({ children }) => {
         setLoading(true);
         try {
             const response = await api.get('/boxes/owner/boxes/');
+            console.log('Owner boxes fetched:', response.data);
             setOwnerBoxes(processBoxData(response.data.results || response.data));
         } catch (err) {
             console.error('Error fetching owner boxes:', err);
@@ -94,9 +104,11 @@ export const BoxProvider = ({ children }) => {
 
     const fetchBoxes = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const response = await api.get('/boxes/boxes/', { params: filters });
-            setBoxes(processBoxData(response.data.results || response.data));
+            const boxesData = processBoxData(response.data.results || response.data);
+            setBoxes(boxesData);
         } catch (err) {
             console.error('Error fetching boxes:', err);
             setError('Could not load boxes.');
@@ -131,17 +143,17 @@ export const BoxProvider = ({ children }) => {
         }
     }, [processBoxData]);
 
-    // --- ADDED THIS HOOK TO AUTOMATICALLY FETCH ON FILTER CHANGE ---
-    // This is the only modification made to your file.
+    // Fetch boxes when filters change
     useEffect(() => {
-        // This check prevents an API call on the very first render before filters are set.
-        // The first fetch is triggered when the BoxListings component calls setFilters.
-        if (Object.keys(filters).length > 0) {
+        fetchBoxes();
+    }, [filters, fetchBoxes]);
+
+    // Initial fetch on component mount (for when no filters are set initially)
+    useEffect(() => {
+        if (Object.keys(filters).length === 0) {
             fetchBoxes();
         }
-    }, [fetchBoxes]); // The dependency array includes fetchBoxes.
-                     // Since fetchBoxes itself depends on 'filters', this effect will
-                     // run every time the filters are changed.
+    }, []); // Run once on mount
 
     const contextValue = {
         boxes,

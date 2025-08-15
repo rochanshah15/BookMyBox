@@ -49,14 +49,49 @@ class OwnerBoxSerializer(serializers.ModelSerializer):
     Serializer for owners to manage their own boxes.
     It exposes fields relevant to the owner's management tasks.
     """
+    class ImagesField(serializers.ListField):
+        def to_internal_value(self, data):
+            # Accept both file objects and strings
+            result = []
+            for item in data:
+                if hasattr(item, 'name'):
+                    result.append(item.name)
+                elif isinstance(item, str):
+                    result.append(item)
+                else:
+                    raise serializers.ValidationError('Not a valid string or file.')
+            return result
+
+    images = ImagesField(
+        child=serializers.CharField(),
+        required=False
+    )
+
     class Meta:
         model = Box
-        # We list all fields an owner can submit.
-        # 'owner' and 'status' will be set by the server.
         fields = [
             'id', 'name', 'sport', 'sports', 'location', 'price', 
             'capacity', 'image', 'images', 'amenities', 'description',
             'full_description', 'rules', 'latitude', 'longitude',
-            'status', 'rejection_reason' # Owners can see status/reason
+            'status', 'rejection_reason'
         ]
         read_only_fields = ['status', 'rejection_reason']
+
+    def create(self, validated_data):
+        # If 'sport' is missing, set it from the first item in 'sports' (for compatibility)
+        if not validated_data.get('sport') and validated_data.get('sports'):
+            sports_list = validated_data['sports']
+            if isinstance(sports_list, list) and len(sports_list) > 0:
+                validated_data['sport'] = sports_list[0]
+        images = self.context['request'].FILES.getlist('images')
+        if images:
+            validated_data['images'] = []
+            for img in images:
+                # Only store file name, not path
+                if hasattr(img, 'name'):
+                    validated_data['images'].append(img.name)
+        else:
+            # Ensure images is always a list
+            if not validated_data.get('images'):
+                validated_data['images'] = []
+        return super().create(validated_data)

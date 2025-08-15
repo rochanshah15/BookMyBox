@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Star, Users, MapPin, Clock } from 'lucide-react'
 import { useBox } from '../context/BoxContext'
 import Loader from '../components/common/Loader'
+import { useAuth } from '../api.jsx'
 
 const Home = () => {
   const { featuredBoxes, popularBoxes, fetchFeaturedBoxes, fetchPopularBoxes } = useBox()
+  const { isAuthenticated } = useAuth()
 
   useEffect(() => {
     // console.log('Home component mounted. Attempting to fetch data...');
@@ -319,12 +321,14 @@ const Home = () => {
               >
                 Browse All Boxes
               </Link>
-              <Link
-                to="/signup"
-                className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200"
-              >
-                Create Account
-              </Link>
+              {!isAuthenticated && (
+                <Link
+                  to="/signup"
+                  className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200"
+                >
+                  Create Account
+                </Link>
+              )}
             </div>
           </motion.div>
         </div>

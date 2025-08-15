@@ -13,6 +13,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import TestAPI from './pages/TestAPI';
 import { useAuth } from './api.jsx'; // Correct path and extension
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -49,6 +50,7 @@ function App() {
           <Route path="/boxes/:id" element={<BoxDetails />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/test-api" element={<TestAPI />} />
 
           {/* Protected Routes */}
           <Route path="/profile" element={

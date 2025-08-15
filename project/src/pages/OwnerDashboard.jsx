@@ -10,6 +10,7 @@ import {
 
 import AddBoxForm from '../components/boxes/AddBoxForm';
 import { useAuth, api } from '../api.jsx'; // Using your api instance
+import { useBox } from '../context/BoxContext'; // Added for global box refresh
 
 // ChartJS Registration (no changes)
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement, BarElement, Filler);
@@ -26,17 +27,20 @@ const OwnerDashboard = () => {
   const [showAddBoxModal, setShowAddBoxModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
+  const [error, setError] = useState(null);
   const { user } = useAuth();
+  const { refreshAll } = useBox(); // Added for global box refresh
 
   // --- MODIFIED: Single, efficient function to fetch all dashboard data ---
   const fetchAllData = useCallback(async () => {
-    // No need to set loading here, as the initial state handles it.
+    setIsLoading(true);
+    setError(null);
     try {
-      // One API call to our dedicated dashboard endpoint
       const response = await api.get('/owner_dashboard/stats/');
       setDashboardData(response.data);
     } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+      setError("Failed to fetch dashboard data. Please try again later.");
+      setDashboardData(null);
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +55,8 @@ const OwnerDashboard = () => {
   // --- SUCCESS HANDLER for the AddBoxForm ---
   const handleAddBoxSuccess = () => {
     setShowAddBoxModal(false);
-    fetchAllData(); // Simply re-fetch all data to update the entire dashboard
+    fetchAllData(); // Re-fetch all data to update the dashboard
+    refreshAll(); // Also refresh global box data for BoxListings page
   };
 
   // --- DATA DERIVATION (Connecting API data to UI) ---
@@ -60,7 +65,7 @@ const OwnerDashboard = () => {
     total_bookings = 0,
     active_boxes_count = 0,
     pending_boxes_count = 0,
-    rejected_boxes_count = 0, // Assuming backend provides this
+    rejected_boxes_count = 0,
     avg_rating = '0.0',
     revenue_chart_labels = [],
     revenue_chart_data = [],
@@ -117,6 +122,16 @@ const OwnerDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 font-semibold">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container-max section-padding">
@@ -124,7 +139,8 @@ const OwnerDashboard = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {user?.name || 'Owner'}! 🏢</h1>
+              {/* Replace user?.name with user?.first_name || user?.email || 'Owner' for better fallback */}
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {user?.first_name || user?.email || 'Owner'}! 🏢</h1>
               <p className="text-gray-600">Manage your sports facilities and track performance</p>
             </div>
             {pending_boxes_count > 0 && (

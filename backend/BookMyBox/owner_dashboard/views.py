@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import timedelta
 
 from django.db import models
-from django.db.models import Avg, Count, DecimalField, FloatField, Sum
+from django.db.models import Avg, Count, DecimalField, FloatField, Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from bookings.models import Booking
 from boxes.models import Box
 
-from .serializers import OwnerDashboardStatsSerializer
+from .serializers import OwnerDashboardStatsSerializer, BoxSerializer, BookingSerializer
 
 
 class OwnerDashboardAPIView(APIView):
@@ -24,29 +24,28 @@ class OwnerDashboardAPIView(APIView):
         user = request.user
         all_owner_boxes = Box.objects.filter(owner=user).order_by("-submitted_at")
         approved_boxes = all_owner_boxes.filter(status="approved")
+        pending_boxes = all_owner_boxes.filter(status="pending")
+        rejected_boxes = all_owner_boxes.filter(status="rejected")
 
         # Key Metrics
         stats = approved_boxes.aggregate(
             total_revenue=Coalesce(
-                Sum("bookings__total_amount", filter=models.Q(bookings__booking_status="completed")),
+                Sum("bookings__total_amount", filter=Q(bookings__booking_status="completed")),
                 0.0,
                 output_field=DecimalField(),
             ),
             total_bookings=Coalesce(Count("bookings"), 0),
-            avg_rating=Coalesce(Avg("reviews__rating"), 0.0, output_field=FloatField()),
-        )
-
-        # Box Status Counts
-        box_counts = all_owner_boxes.aggregate(
-            pending_boxes=Count("id", filter=models.Q(status="pending")),
-            rejected_boxes=Count("id", filter=models.Q(status="rejected")),
+            avg_rating=Coalesce(Avg("reviews__rating"), 0.0, output_field=DecimalField()),
         )
 
         # Chart Data
         sports_count = defaultdict(int)
-        for box in all_owner_boxes.only("sports"):
-            for sport in box.sports:
-                sports_count[sport] += 1
+        for box in all_owner_boxes:
+            if hasattr(box, 'sports') and isinstance(box.sports, list):
+                for sport in box.sports:
+                    sports_count[sport] += 1
+            elif hasattr(box, 'sport') and box.sport:
+                sports_count[box.sport] += 1
 
         today = timezone.now().date()
         revenue_chart_labels = []
@@ -64,20 +63,27 @@ class OwnerDashboardAPIView(APIView):
             )
             revenue_chart_data.append(monthly_revenue)
 
-        # --- Recent Bookings ---
-        # --- MODIFIED: Changed '-time_slot' to '-start_time' ---
+        # Bookings chart (dummy data for now)
+        bookings_chart_labels = revenue_chart_labels
+        bookings_chart_data = [
+            Booking.objects.filter(
+                box__in=approved_boxes,
+                date__month=timezone.now().month - i,
+                booking_status="completed",
+            ).count() for i in range(6)
+        ]
+
+        # Recent Bookings
         recent_bookings_qs = (
             Booking.objects.filter(box__in=all_owner_boxes)
             .select_related("user", "box")
             .order_by("-date", "-start_time")[:5]
         )
-        
-        # --- MODIFIED: Create a useful time_slot string from start_time and end_time ---
         recent_bookings_data = [
             {
                 "id": b.id,
-                "user_name": b.user.name if b.user else "N/A",
-                "box_name": b.box.name if b.box else "N/A",
+                "user_name": getattr(b.user, "name", getattr(b.user, "email", "N/A")),
+                "box_name": getattr(b.box, "name", "N/A"),
                 "date": b.date,
                 "amount": b.total_amount,
                 "status": b.booking_status,
@@ -86,21 +92,21 @@ class OwnerDashboardAPIView(APIView):
             for b in recent_bookings_qs
         ]
 
-        # Compile Final Data
+        # Pass raw queryset to serializer, let it handle serialization
         data = {
             "total_revenue": stats["total_revenue"],
             "total_bookings": stats["total_bookings"],
             "active_boxes_count": approved_boxes.count(),
-            "pending_boxes_count": box_counts["pending_boxes"],
-            "rejected_boxes_count": box_counts["rejected_boxes"],
+            "pending_boxes_count": pending_boxes.count(),
+            "rejected_boxes_count": rejected_boxes.count(),
             "avg_rating": round(stats["avg_rating"], 1),
             "sports_distribution": dict(sports_count),
             "revenue_chart_labels": revenue_chart_labels,
             "revenue_chart_data": revenue_chart_data,
-            "recent_bookings": recent_bookings_data,
+            "bookings_chart_labels": bookings_chart_labels,
+            "bookings_chart_data": bookings_chart_data,
+            "recent_bookings": recent_bookings_qs,
             "all_owner_boxes": all_owner_boxes,
-            "bookings_chart_labels": [],
-            "bookings_chart_data": [],
         }
 
         serializer = OwnerDashboardStatsSerializer(instance=data)

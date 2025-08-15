@@ -28,7 +28,7 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
     This viewset provides PUBLIC read-only access to approved boxes.
     It handles listing, retrieving, searching, and nearby functionality.
     """
-    queryset = Box.objects.filter(status='approved').order_by('-rating', 'name')
+    queryset = Box.objects.filter(status='approved').order_by('-created_at')
     serializer_class = BoxSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
@@ -50,6 +50,7 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
         featured_boxes = self.get_queryset().filter(is_featured=True)
         
         serializer = self.get_serializer(featured_boxes, many=True)
+        print("featured:", serializer.data)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -63,6 +64,7 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
         popular_boxes = self.get_queryset().order_by('-rating')[:10] # Gets top 10 by rating
         
         serializer = self.get_serializer(popular_boxes, many=True)
+        
         return Response(serializer.data)
 
     # --- YOUR EXISTING ACTIONS ARE UNCHANGED ---
@@ -123,12 +125,19 @@ class OwnerBoxViewSet(viewsets.ModelViewSet):
         return Box.objects.filter(owner=self.request.user).order_by('-submitted_at')
 
     def perform_create(self, serializer):
-        """
-        When an owner creates a box, set the owner automatically
-        and set the status to 'pending' for admin approval.
-        """
-        serializer.save(
+        box = serializer.save(
             owner=self.request.user,
-            status='pending',
+            status='approved',  # Changed from 'pending' to 'approved' so boxes appear immediately
             submitted_at=timezone.now()
         )
+        images = self.request.FILES.getlist('images')
+        # Always ensure box.images is a list
+        if not isinstance(box.images, list):
+            box.images = []
+        if images:
+            for img in images:
+                if hasattr(img, 'name'):
+                    box.images.append(img.name)
+            # Set main image as first
+            box.image = images[0]
+        box.save()

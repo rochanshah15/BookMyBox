@@ -4,37 +4,36 @@ import { User, Mail, Phone, MapPin, Calendar, Camera, Edit2, Save, X, Info } fro
 import { useAuth } from '../api.jsx'; // Correct path to your api.jsx
 
 const Profile = () => {
-  const { user, fetchUserProfile, updateProfile, generalError } = useAuth(); // Destructure new functions and generalError
+  const { user, fetchUserProfile, updateProfile, generalError } = useAuth();
 
-  // State for form data, initialized with separate first_name and last_name
   const [formData, setFormData] = useState({
-    firstName: '', // Mapped from user.first_name, use camelCase for frontend state
-    lastName: '',  // Mapped from user.last_name, use camelCase for frontend state
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     location: '',
-    dateOfBirth: '', // Frontend camelCase for user.date_of_birth
+    dateOfBirth: '',
     bio: '',
-    preferredSports: [], // Frontend camelCase for user.preferred_sports
-    emergencyContact: '', // Frontend camelCase for user.emergency_contact
+    preferredSports: [],
+    emergencyContact: '',
     address: ''
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true); // State for initial profile fetch loading
-  const [globalProfileError, setGlobalProfileError] = useState(null); // For general profile loading errors or API errors
-  const [formErrors, setFormErrors] = useState({}); // <--- NEW: State for field-specific validation errors
-  const [saveLoading, setSaveLoading] = useState(false); // State for save operation loading
-  const [saveSuccess, setSaveSuccess] = useState(false); // State for save success message
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [globalProfileError, setGlobalProfileError] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const sports = ['Cricket', 'Football', 'Tennis', 'Badminton', 'Basketball', 'Pickleball', 'Volleyball', 'Table Tennis'];
 
-  // Effect 1: Initialize formData when the `user` object from AuthProvider changes
+  // Effect 1: Sync formData when the `user` object from context changes. This is correct.
   useEffect(() => {
     if (user) {
       setFormData({
-        firstName: user.first_name || '', // Map from snake_case to camelCase for formData
-        lastName: user.last_name || '',   // Map from snake_case to camelCase for formData
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
         email: user.email || '',
         phone: user.phone || '',
         location: user.location || '',
@@ -44,54 +43,41 @@ const Profile = () => {
         emergencyContact: user.emergency_contact || '',
         address: user.address || ''
       });
-      setProfileLoading(false); // Once user data is loaded/initialized, stop loading
-      setGlobalProfileError(null); // Clear any previous global errors
-      setFormErrors({}); // Clear any previous form errors
-      setSaveSuccess(false); // Clear previous save success
+      setProfileLoading(false);
+      setGlobalProfileError(null);
+      setFormErrors({});
+      setSaveSuccess(false);
     } else {
-      // If user logs out or is not present initially
-      setFormData({ // Clear form data
+      setFormData({
         firstName: '', lastName: '', email: '', phone: '', location: '', dateOfBirth: '', bio: '',
         preferredSports: [], emergencyContact: '', address: ''
       });
       setProfileLoading(false);
     }
-  }, [user]); // DEPENDENCY IS JUST `user` here. This effect reacts to user object changes.
+  }, [user]);
 
-  // Effect 2: Fetch user profile data *only once* on component mount (or if fetchUserProfile reference changes)
+  // Effect 2: Fetch user profile data on initial component mount if needed.
   useEffect(() => {
     const initialLoad = async () => {
-      // Only fetch if `user` isn't already populated and we are not already in a loading state
-      if (!user && !profileLoading) {
+      if (!user) {
         setProfileLoading(true);
         setGlobalProfileError(null);
-        console.log("Profile component: Initial fetchUserProfile triggered.");
-        const result = await fetchUserProfile();
-        if (!result.success) {
-          setGlobalProfileError(result.error || 'Failed to load initial profile data.');
-        }
+        await fetchUserProfile();
         setProfileLoading(false);
-      } else if (user) {
-        // If user is already available (e.g., from a quick re-mount or refresh after login),
-        // we can consider it loaded.
+      } else {
         setProfileLoading(false);
       }
     };
-
     initialLoad();
-  }, [fetchUserProfile, user]); // Include user in dependency to avoid re-fetching if user state updates from elsewhere
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setSaveSuccess(false); // Clear save success message on any change
-    // Clear the specific error for this field when user starts typing
-    // Ensure formErrors[name] exists before trying to access it
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setSaveSuccess(false);
     if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined })); // Set to undefined to remove key or null
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -100,13 +86,9 @@ const Profile = () => {
       const updatedSports = prev.preferredSports.includes(sport)
         ? prev.preferredSports.filter(s => s !== sport)
         : [...prev.preferredSports, sport];
-      return {
-        ...prev,
-        preferredSports: updatedSports
-      };
+      return { ...prev, preferredSports: updatedSports };
     });
-    setSaveSuccess(false); // Clear save success message on any change
-    // Clear the error for preferredSports when user changes selection
+    setSaveSuccess(false);
     if (formErrors.preferredSports) {
       setFormErrors(prev => ({ ...prev, preferredSports: undefined }));
     }
@@ -114,45 +96,42 @@ const Profile = () => {
 
   const handleSave = async () => {
     setSaveLoading(true);
-    setGlobalProfileError(null); // Clear general profile errors
-    setFormErrors({}); // <--- IMPORTANT: Clear previous field errors
-    setSaveSuccess(false); // Clear previous success message
+    setGlobalProfileError(null);
+    setFormErrors({});
+    setSaveSuccess(false);
 
-    // Map frontend camelCase to backend snake_case for sending data
     const dataToSave = {
-      first_name: formData.firstName, // Send first_name (snake_case)
-      last_name: formData.lastName,    // Send last_name (snake_case)
+      first_name: formData.firstName,
+      last_name: formData.lastName,
       phone: formData.phone,
       location: formData.location,
-      date_of_birth: formData.dateOfBirth, // Adapt to backend field name
+      date_of_birth: formData.dateOfBirth,
       bio: formData.bio,
-      preferred_sports: formData.preferredSports, // Adapt to backend field name
-      emergency_contact: formData.emergencyContact, // Adapt to backend field name
+      preferred_sports: formData.preferredSports,
+      emergency_contact: formData.emergencyContact,
       address: formData.address
     };
 
-    const result = await updateProfile(dataToSave); // Call the API function
+    const result = await updateProfile(dataToSave);
 
     if (result.success) {
       console.log('Profile saved successfully:', result.data);
-      setIsEditing(false); // Exit edit mode
-      setSaveSuccess(true); // Show success message
-      // The `user` state in AuthProvider will be updated by `updateProfile`,
-      // which in turn will trigger `Effect 1` to re-sync `formData` with the latest `user` data.
+      // ✅ FIX: The fetchUserProfile() call is removed from here.
+      // The context update from updateProfile() is enough to trigger the useEffect hook,
+      // which handles syncing the form data.
+      setIsEditing(false);
+      setSaveSuccess(true);
     } else {
       console.error('Failed to save profile:', result.error || result.errors);
       if (result.errors) {
         const mappedErrors = {};
         for (const key in result.errors) {
-          // Convert snake_case to camelCase for frontend keys (e.g., 'first_name' -> 'firstName')
           const frontendKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
           mappedErrors[frontendKey] = result.errors[key];
         }
-        setFormErrors(mappedErrors); // <--- SET FIELD-SPECIFIC ERRORS HERE
-        // Set a general message indicating there are form errors
+        setFormErrors(mappedErrors);
         setGlobalProfileError('Please correct the errors in the form.');
       } else {
-        // Handle general API errors (e.g., 401, 500, or a 'detail' error from backend)
         setGlobalProfileError(result.error || 'An unexpected error occurred during save.');
       }
     }
@@ -160,11 +139,11 @@ const Profile = () => {
   };
 
   const handleCancelEdit = () => {
-    // Reset formData to current user data when canceling
+    // This is correct: it resets the form using the source of truth (the 'user' object from context)
     if (user) {
       setFormData({
-        firstName: user.first_name || '', // Reset using snake_case from user object
-        lastName: user.last_name || '',   // Reset using snake_case from user object
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
         email: user.email || '',
         phone: user.phone || '',
         location: user.location || '',
@@ -176,21 +155,13 @@ const Profile = () => {
       });
     }
     setIsEditing(false);
-    setGlobalProfileError(null); // Clear any errors
-    setFormErrors({}); // Clear field errors too
-    setSaveSuccess(false); // Clear success message
+    setGlobalProfileError(null);
+    setFormErrors({});
+    setSaveSuccess(false);
   };
+  
+  // (The rest of your JSX remains the same as it is well-structured)
 
-  // Display handling before rendering the main profile content
-  if (!user && !profileLoading) { // Only show login message if not loading and no user
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-700">Please log in to view your profile.</p>
-      </div>
-    );
-  }
-
-  // Handle loading state
   if (profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -200,8 +171,16 @@ const Profile = () => {
     );
   }
 
-  // Determine the display name (combined first/last or email)
-  const displayName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || user?.email;
+  if (!user && !profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-700">Please log in to view your profile.</p>
+      </div>
+    );
+  }
+
+  const displayName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim() || user?.email || '';
+  const avatarLetter = displayName.charAt(0).toUpperCase() || 'U';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -217,28 +196,13 @@ const Profile = () => {
               <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
               <p className="text-gray-600">Manage your personal information and preferences</p>
             </div>
-            <button
-              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-              className="btn-primary flex items-center space-x-2"
-              disabled={saveLoading}
-            >
-              {saveLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : isEditing ? (
-                <Save size={20} />
-              ) : (
-                <Edit2 size={20} />
-              )}
-              <span>{saveLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit Profile'}</span>
-            </button>
-            {isEditing && (
+            {!isEditing && (
               <button
-                onClick={handleCancelEdit}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2 ml-3"
-                disabled={saveLoading}
+                onClick={() => setIsEditing(true)}
+                className="btn-primary flex items-center space-x-2"
               >
-                <X size={18} />
-                <span>Cancel</span>
+                <Edit2 size={20} />
+                <span>Edit Profile</span>
               </button>
             )}
           </div>
@@ -266,7 +230,6 @@ const Profile = () => {
             </motion.div>
           )}
 
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Profile Picture & Basic Info */}
             <div className="lg:col-span-1">
@@ -277,7 +240,7 @@ const Profile = () => {
               >
                 <div className="relative inline-block mb-4">
                   <div className="w-32 h-32 bg-primary-500 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto">
-                    {displayName.charAt(0).toUpperCase()}
+                    {avatarLetter}
                   </div>
                   {isEditing && (
                     <button className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50">
@@ -341,27 +304,20 @@ const Profile = () => {
                 className="card p-6"
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h3>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                     {isEditing ? (
                       <>
                         <input
                           type="text"
-                          name="firstName" // <--- Corrected: Use 'firstName' to match formData key
+                          name="firstName"
                           value={formData.firstName}
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.firstName && ( // Display error for firstName (camelCase)
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.firstName[0]}
-                          </div>
-                        )}
+                        {formErrors.firstName && <div className="text-red-500 text-xs mt-1">{formErrors.firstName[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.firstName || 'N/A'}</p>
@@ -370,47 +326,32 @@ const Profile = () => {
 
                   {/* Last Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                     {isEditing ? (
                       <>
                         <input
                           type="text"
-                          name="lastName" // <--- Corrected: Use 'lastName' to match formData key
+                          name="lastName"
                           value={formData.lastName}
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.lastName && ( // Display error for lastName (camelCase)
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.lastName[0]}
-                          </div>
-                        )}
+                        {formErrors.lastName && <div className="text-red-500 text-xs mt-1">{formErrors.lastName[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.lastName || 'N/A'}</p>
                     )}
                   </div>
 
-                  {/* Email Address (Read-only) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
-                    <p className="text-gray-900">{formData.email || 'N/A'}</p>
-                    {formErrors.email && ( // Error for email (should be read-only on backend but good to have)
-                      <div className="text-red-500 text-xs mt-1">
-                        {formErrors.email[0]}
-                      </div>
-                    )}
+                  {/* Email (Read-only) */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <p className="text-gray-500 bg-gray-100 p-2 rounded-md">{formData.email || 'N/A'}</p>
                   </div>
 
                   {/* Phone Number */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                     {isEditing ? (
                       <>
                         <input
@@ -420,49 +361,37 @@ const Profile = () => {
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.phone && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.phone[0]}
-                          </div>
-                        )}
+                        {formErrors.phone && <div className="text-red-500 text-xs mt-1">{formErrors.phone[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.phone || 'N/A'}</p>
                     )}
                   </div>
-
+                  
                   {/* Date of Birth */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date of Birth
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
                     {isEditing ? (
                       <>
                         <input
                           type="date"
-                          name="dateOfBirth" // Frontend camelCase
+                          name="dateOfBirth"
                           value={formData.dateOfBirth}
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.dateOfBirth && ( // Error for dateOfBirth (camelCase)
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.dateOfBirth[0]}
-                          </div>
-                        )}
+                        {formErrors.dateOfBirth && <div className="text-red-500 text-xs mt-1">{formErrors.dateOfBirth[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">
-                        {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
-                      </p>
+                      <p className="text-gray-900">{formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
                     )}
                   </div>
-
-                  {/* Location */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Location
-                    </label>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-6 mt-6">
+                  {/* Location, Address, Bio, Emergency Contact */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                     {isEditing ? (
                       <>
                         <input
@@ -472,22 +401,14 @@ const Profile = () => {
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.location && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.location[0]}
-                          </div>
-                        )}
+                        {formErrors.location && <div className="text-red-500 text-xs mt-1">{formErrors.location[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.location || 'N/A'}</p>
                     )}
                   </div>
-
-                  {/* Address */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
                     {isEditing ? (
                       <>
                         <textarea
@@ -497,22 +418,14 @@ const Profile = () => {
                           rows="2"
                           className="input-field"
                         />
-                        {formErrors.address && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.address[0]}
-                          </div>
-                        )}
+                        {formErrors.address && <div className="text-red-500 text-xs mt-1">{formErrors.address[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.address || 'N/A'}</p>
                     )}
                   </div>
-
-                  {/* Bio */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bio
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                     {isEditing ? (
                       <>
                         <textarea
@@ -523,36 +436,24 @@ const Profile = () => {
                           className="input-field"
                           placeholder="Tell us about yourself..."
                         />
-                        {formErrors.bio && (
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.bio[0]}
-                          </div>
-                        )}
+                        {formErrors.bio && <div className="text-red-500 text-xs mt-1">{formErrors.bio[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.bio || 'N/A'}</p>
                     )}
                   </div>
-
-                  {/* Emergency Contact */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Emergency Contact
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact</label>
                     {isEditing ? (
                       <>
                         <input
                           type="tel"
-                          name="emergencyContact" // Frontend camelCase
+                          name="emergencyContact"
                           value={formData.emergencyContact}
                           onChange={handleChange}
                           className="input-field"
                         />
-                        {formErrors.emergencyContact && ( // Error for emergencyContact (camelCase)
-                          <div className="text-red-500 text-xs mt-1">
-                            {formErrors.emergencyContact[0]}
-                          </div>
-                        )}
+                        {formErrors.emergencyContact && <div className="text-red-500 text-xs mt-1">{formErrors.emergencyContact[0]}</div>}
                       </>
                     ) : (
                       <p className="text-gray-900">{formData.emergencyContact || 'N/A'}</p>
@@ -563,9 +464,7 @@ const Profile = () => {
                 {/* Sports Preferences - Edit Mode */}
                 {isEditing && (
                   <div className="mt-6 pt-6 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Preferred Sports
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Preferred Sports</label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {sports.map((sport) => (
                         <label key={sport} className="flex items-center space-x-2 cursor-pointer">
@@ -579,15 +478,11 @@ const Profile = () => {
                         </label>
                       ))}
                     </div>
-                    {formErrors.preferredSports && ( // Error for preferredSports (camelCase)
-                      <div className="text-red-500 text-xs mt-1">
-                        {formErrors.preferredSports[0]}
-                      </div>
-                    )}
+                    {formErrors.preferredSports && <div className="text-red-500 text-xs mt-1">{formErrors.preferredSports[0]}</div>}
                   </div>
                 )}
 
-                {/* Action Buttons in Edit Mode - moved Save/Cancel here for better UI flow */}
+                {/* Action Buttons in Edit Mode */}
                 {isEditing && (
                   <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
                     <button

@@ -15,7 +15,10 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
     amenities: [],
     images: [], // This will hold File objects for upload
     rules: '',
-    contactInfo: ''
+    contactInfo: '',
+    full_description: '',
+    latitude: '',
+    longitude: ''
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,10 +153,16 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
         </div>
 
         {/* Progress Steps */}
-        <div className="px-6 py-4 bg-gray-50 border-b">
-            {/* ... Progress steps JSX goes here ... */}
+        <div className="px-6 py-4 bg-gray-50 border-b flex items-center space-x-4">
+          {steps.map((step, idx) => (
+            <div key={step.id} className="flex items-center">
+              <step.icon size={20} className={currentStep === step.id ? 'text-primary-600' : 'text-gray-400'} />
+              <span className={`ml-2 font-medium ${currentStep === step.id ? 'text-primary-600' : 'text-gray-500'}`}>{step.title}</span>
+              {idx < steps.length - 1 && <span className="mx-2 text-gray-300">→</span>}
+            </div>
+          ))}
         </div>
-        
+
         {/* Form Content */}
         <div className="p-6 overflow-y-auto">
           {currentStep === 1 && (
@@ -164,9 +173,13 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                <textarea value={formData.description} onChange={(e) => handleChange('description', e.target.value)} className={`input-field ${errors.description ? 'border-red-500' : ''}`} rows="4" placeholder="Describe your facility..." />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Short Description *</label>
+                <textarea value={formData.description} onChange={(e) => handleChange('description', e.target.value)} className={`input-field ${errors.description ? 'border-red-500' : ''}`} rows="2" placeholder="Short description..." />
                 {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Description</label>
+                <textarea value={formData.full_description} onChange={(e) => handleChange('full_description', e.target.value)} className="input-field" rows="3" placeholder="Full details about your facility..." />
               </div>
             </motion.div>
           )}
@@ -180,6 +193,18 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
                 </div>
                 {errors.sports && <p className="text-red-500 text-sm mt-1">{errors.sports}</p>}
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
+                  <input type="number" value={formData.price} onChange={(e) => handleChange('price', e.target.value)} className={`input-field ${errors.price ? 'border-red-500' : ''}`} placeholder="e.g., 500" />
+                  {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Capacity *</label>
+                  <input type="number" value={formData.capacity} onChange={(e) => handleChange('capacity', e.target.value)} className={`input-field ${errors.capacity ? 'border-red-500' : ''}`} placeholder="e.g., 20" />
+                  {errors.capacity && <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -189,6 +214,16 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Location *</label>
                 <input type="text" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} className={`input-field ${errors.location ? 'border-red-500' : ''}`} placeholder="e.g., Near Iscon Temple, SG Highway, Ahmedabad" />
                 {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
+                  <input type="number" value={formData.latitude} onChange={(e) => handleChange('latitude', e.target.value)} className="input-field" placeholder="e.g., 23.0225" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
+                  <input type="number" value={formData.longitude} onChange={(e) => handleChange('longitude', e.target.value)} className="input-field" placeholder="e.g., 72.5714" />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Amenities *</label>
@@ -212,6 +247,14 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                 )}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rules</label>
+                <textarea value={formData.rules} onChange={(e) => handleChange('rules', e.target.value)} className="input-field" rows="2" placeholder="Any rules for your facility?" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Info</label>
+                <input type="text" value={formData.contactInfo} onChange={(e) => handleChange('contactInfo', e.target.value)} className="input-field" placeholder="Phone, email, etc." />
+              </div>
             </motion.div>
           )}
 
@@ -219,13 +262,30 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Review Your Submission</h3>
                 <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                    {/* Review details JSX */}
+                  <div><strong>Box Name:</strong> {formData.name}</div>
+                  <div><strong>Short Description:</strong> {formData.description}</div>
+                  <div><strong>Full Description:</strong> {formData.full_description}</div>
+                  <div><strong>Sports:</strong> {formData.sports.join(', ')}</div>
+                  <div><strong>Price:</strong> ₹{formData.price}</div>
+                  <div><strong>Capacity:</strong> {formData.capacity}</div>
+                  <div><strong>Location:</strong> {formData.location}</div>
+                  <div><strong>Latitude:</strong> {formData.latitude}</div>
+                  <div><strong>Longitude:</strong> {formData.longitude}</div>
+                  <div><strong>Amenities:</strong> {formData.amenities.join(', ')}</div>
+                  <div><strong>Rules:</strong> {formData.rules}</div>
+                  <div><strong>Contact Info:</strong> {formData.contactInfo}</div>
+                  <div><strong>Images:</strong> {formData.images.length} file(s) selected</div>
+                  {formData.images.length > 0 && (
+                    <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {formData.images.map((file, i) => (<img key={i} src={URL.createObjectURL(file)} alt="preview" className="h-16 w-full object-cover rounded-md" />))}
+                    </div>
+                  )}
                 </div>
                 {errors.submit && (<div className="bg-red-50 p-3 rounded-lg"><p className="text-red-800 text-sm">{errors.submit}</p></div>)}
              </motion.div>
           )}
         </div>
-        
+
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t bg-gray-50">
           <div>{currentStep > 1 && (<button onClick={handlePrevious} className="btn-secondary">Previous</button>)}</div>

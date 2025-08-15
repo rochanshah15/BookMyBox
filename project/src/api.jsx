@@ -17,7 +17,6 @@ const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  // Corrected: use `setUser` as the setter for the `user` state
   const [user, setUser] = useState(() => {
     try {
       const storedUser = localStorage.getItem('user');
@@ -39,31 +38,28 @@ export const AuthProvider = ({ children }) => {
     setRefreshToken(null);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user'); // Also remove user data from local storage
+    localStorage.removeItem('user');
     setGeneralError(null);
   }, []);
 
   // Logout function
   const logout = useCallback(() => {
     clearAuth();
-    // Potentially redirect to login page here, or let router handle it
-    // navigate('/login'); // If using useNavigate from react-router-dom
   }, [clearAuth]);
 
   // Function to refresh token
   const refreshAuthToken = useCallback(async () => {
-    if (!refreshToken) {
+    const currentRefreshToken = localStorage.getItem('refreshToken');
+    if (!currentRefreshToken) {
       console.warn("No refresh token available. Cannot refresh.");
       logout();
       return false;
     }
     try {
-      // Ensure the refresh endpoint is correct, often /token/refresh/ or /auth/token/refresh/
-      const response = await axios.post(`${API_BASE_URL}/user/token/refresh/`, { refresh: refreshToken });
+      const response = await axios.post(`${API_BASE_URL}/user/token/refresh/`, { refresh: currentRefreshToken });
       const newAccessToken = response.data.access;
       localStorage.setItem('accessToken', newAccessToken);
       setAccessToken(newAccessToken);
-      // console.log("Token refreshed successfully. New access token:", newAccessToken);
       return true;
     } catch (error) {
       console.error('Failed to refresh token:', error.response?.data || error.message);
@@ -72,96 +68,81 @@ export const AuthProvider = ({ children }) => {
       } else {
         setGeneralError("Failed to refresh session.");
       }
-      logout(); // Log out on refresh failure
+      logout();
       return false;
     }
-  }, [refreshToken, logout]); // Depend on refreshToken and logout
+  }, [logout]);
 
-  // Function to fetch current user data (used after login/signup or on app load)
+  // --- FIX 1: MODIFIED fetchUser TO RETURN DATA ---
+  // This function now returns the fetched user data, making it more versatile.
   const fetchUser = useCallback(async () => {
-    if (!accessToken) {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
       setUser(null);
-      return;
+      return null; // <-- RETURN NULL on failure
     }
     try {
-      // Assuming a /user/me/ or /user/profile/ endpoint exists for fetching current user details
-      // Use the 'api' instance which already handles auth headers
-      const response = await api.get('/user/profile/'); 
-      setUser(response.data.user); // Backend response from profile/ endpoint usually wraps user data
-      localStorage.setItem('user', JSON.stringify(response.data.user)); // Store user data in local storage
+      const response = await api.get('/user_profile/my-profile/');  // FIXED: Changed to correct endpoint
+      const fetchedUserData = response.data;  // FIXED: No need for .user since CompleteProfileSerializer returns data directly
+
+      setUser(fetchedUserData);
+      localStorage.setItem('user', JSON.stringify(fetchedUserData));
+      
+      return fetchedUserData; // <-- RETURN THE NEW USER DATA
+
     } catch (error) {
       console.error('Failed to fetch user data with current token:', error.response?.data || error.message);
-      // If fetching user fails, it might mean the access token is invalid or expired
-      // The response interceptor will handle 401s, but we'll also catch here for clarity.
       if (error.response?.status === 401) {
-        console.warn("Access token invalid or expired during user fetch. Attempting refresh...");
+        console.warn("Access token invalid. Attempting refresh...");
         const refreshed = await refreshAuthToken();
         if (refreshed) {
-          // If token was refreshed, retry fetching user
           try {
-            const retryResponse = await api.get('/user/profile/');
-            setUser(retryResponse.data.user); // Access the nested user data
-            localStorage.setItem('user', JSON.stringify(retryResponse.data.user)); // Update user in local storage
+            const retryResponse = await api.get('/user_profile/my-profile/');  // FIXED: Changed to correct endpoint
+            const retriedUserData = retryResponse.data;  // FIXED: No need for .user
+
+            setUser(retriedUserData);
+            localStorage.setItem('user', JSON.stringify(retriedUserData));
+
+            return retriedUserData; // <-- RETURN THE NEW USER DATA ON RETRY
           } catch (retryError) {
             console.error('Failed to fetch user after token refresh:', retryError);
             logout();
           }
-        } else {
-          logout(); // If refresh failed, log out
         }
       } else {
-        // Other errors during user fetch (e.g., network issues)
         setGeneralError("Failed to load user data.");
-        logout(); // Or keep user if appropriate for non-auth errors
       }
+      return null; // <-- RETURN NULL on any failure
     }
-  }, [accessToken, refreshAuthToken, logout]);
+  }, [refreshAuthToken, logout]);
 
-
-  // Axios interceptor for response errors (e.g., 401 Unauthorized)
+  // Axios interceptors
   useEffect(() => {
-    // Interceptor to attach Authorization token
     const requestInterceptor = api.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('accessToken'); // Get latest token
+        const token = localStorage.getItem('accessToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
-
 
     const responseInterceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        // console.log("Interceptor caught error:", error.response?.status, originalRequest.url, originalRequest._retry);
-
-        // If 401 and it's not a retry attempt and not the refresh token endpoint itself
         if (
           error.response?.status === 401 &&
           !originalRequest._retry &&
           !originalRequest.url.includes('/token/refresh/')
         ) {
           originalRequest._retry = true;
-          // console.log("Attempting token refresh for:", originalRequest.url);
           const refreshed = await refreshAuthToken();
           if (refreshed) {
-            // Update the authorization header for the original failed request
-            originalRequest.headers.Authorization = `Bearer ${localStorage.getItem('accessToken')}`;
-            // Retry the original request with new token
-            // console.log("Retrying original request with new token:", originalRequest.url);
             return api(originalRequest);
           }
-        }
-        // If the error is still 401 after refresh attempt (or if refresh failed), logout
-        if (error.response?.status === 401) {
-            // console.log("Final 401 after refresh attempt, logging out.");
-            logout();
         }
         return Promise.reject(error);
       }
@@ -171,65 +152,45 @@ export const AuthProvider = ({ children }) => {
       api.interceptors.request.eject(requestInterceptor);
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, [refreshAuthToken, logout]); // Dependencies for useEffect
+  }, [refreshAuthToken, logout]);
 
-  // --- Login Function ---
+  // Login Function
   const login = async (credentials) => {
-    setGeneralError(null); // Clear previous errors
+    setGeneralError(null);
     try {
-        // Send the request to your JWT token endpoint
-        // This hits the CustomTokenObtainPairView in Django
-        const response = await axios.post(`${API_BASE_URL}/user/login/`, {
-            email: credentials.email,
-            password: credentials.password,
-        });
+      const response = await axios.post(`${API_BASE_URL}/user/login/`, credentials);
+      const { access, refresh, user: userData } = response.data;
 
-        // Backend directly returns 'access', 'refresh', and 'user' at the top level
-        const { access, refresh, user: userData } = response.data; // Destructure user as userData to avoid name clash
+      localStorage.setItem('accessToken', access);
+      localStorage.setItem('refreshToken', refresh);
+      localStorage.setItem('user', JSON.stringify(userData));
 
-        localStorage.setItem('accessToken', access);
-        localStorage.setItem('refreshToken', refresh);
-        localStorage.setItem('user', JSON.stringify(userData)); // Store user data including role
-
-        setAccessToken(access); // Update local state
-        setRefreshToken(refresh); // Update local state
-        setUser(userData); // CORRECTED: Use `setUser` instead of `setCurrentUser`
-        setGeneralError(null);
-
-        return { success: true, user: userData };
+      setAccessToken(access);
+      setRefreshToken(refresh);
+      setUser(userData);
+      
+      return { success: true, user: userData };
     } catch (error) {
-        console.error('Login error:', error.response?.data || error.message);
-        const errorData = error.response?.data;
-        let errorMessage = 'An unexpected error occurred during login.';
-        let fieldErrors = {};
-
-        if (errorData) {
-            if (errorData.detail) {
-                errorMessage = errorData.detail;
-            } else if (errorData.errors) {
-                fieldErrors = errorData.errors;
-                if (Object.keys(fieldErrors).length > 0) {
-                    errorMessage = Object.values(fieldErrors)[0];
-                }
-            } else if (errorData.non_field_errors) {
-                errorMessage = errorData.non_field_errors[0];
-            }
-        }
-
-        setGeneralError(errorMessage);
-        return { success: false, error: errorMessage, errors: fieldErrors };
+      console.error('Login error:', error.response?.data || error.message);
+      const errorData = error.response?.data;
+      let errorMessage = 'An unexpected error occurred during login.';
+      if (errorData?.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData?.non_field_errors) {
+        errorMessage = errorData.non_field_errors[0];
+      }
+      setGeneralError(errorMessage);
+      return { success: false, error: errorMessage, errors: errorData };
     }
   }; 
 
-  // --- Signup Function ---
+  // Signup Function
   const signup = async (userData) => {
     setGeneralError(null);
     try {
       const response = await api.post('/user/register/', userData); 
-      
-      // Backend's register view returns 'user' and 'tokens' as nested objects
-      const { user: registeredUser, tokens } = response.data; // Destructure user and tokens
-      const { access, refresh } = tokens; // Destructure access and refresh from tokens
+      const { user: registeredUser, tokens } = response.data;
+      const { access, refresh } = tokens;
 
       localStorage.setItem('accessToken', access);
       localStorage.setItem('refreshToken', refresh);
@@ -237,101 +198,81 @@ export const AuthProvider = ({ children }) => {
 
       setAccessToken(access);
       setRefreshToken(refresh);
-      setUser(registeredUser); // Set the user data from registration response
+      setUser(registeredUser);
       
       return { success: true, user: registeredUser };
     } catch (err) {
       console.error('Signup error:', err.response?.data || err.message);
       const errorData = err.response?.data;
+      let errorMessage = 'An unexpected error occurred during signup.';
       if (errorData) {
-        if (errorData.detail) {
-          setGeneralError(errorData.detail);
-          return { success: false, error: errorData.detail };
-        }
-        if (errorData.email && Array.isArray(errorData.email) && errorData.email.includes("A user with this email already exists.")) {
-            setGeneralError("An account with this email already exists.");
-            return { success: false, error: "An account with this email already exists." };
-        }
-        if (errorData.non_field_errors) {
-            setGeneralError(errorData.non_field_errors.join(', '));
-            return { success: false, error: errorData.non_field_errors.join(', ') };
-        }
-        return { success: false, errors: errorData }; 
+        if (errorData.detail) errorMessage = errorData.detail;
+        else if (errorData.email) errorMessage = "An account with this email already exists.";
+        else if (errorData.non_field_errors) errorMessage = errorData.non_field_errors.join(', ');
+        
+        setGeneralError(errorMessage);
+        return { success: false, error: errorMessage, errors: errorData };
       }
-      setGeneralError('An unexpected error occurred during signup.');
-      return { success: false, error: 'An unexpected error occurred during signup.' };
+      setGeneralError(errorMessage);
+      return { success: false, error: errorMessage };
     }
   };
 
-  // Fetch user profile data (alias for fetchUser if they hit the same endpoint)
+  // --- FIX 2: MODIFIED fetchUserProfile TO AVOID STALE STATE ---
+  // This function now returns the fresh data it gets directly from fetchUser.
   const fetchUserProfile = useCallback(async () => {
     setGeneralError(null);
-    try {
-      // fetchUser already updates the `user` state, so just call it.
-      await fetchUser(); 
-      // The `user` state should be updated by fetchUser, so we return it directly.
-      return { success: true, data: user }; 
-    } catch (err) {
-      console.error('Failed to fetch user profile:', err);
-      // Errors are handled by fetchUser and interceptor, so generalError should be set there.
+    const freshUserData = await fetchUser(); // <-- CAPTURE the fresh data
+    
+    if (freshUserData) {
+      return { success: true, data: freshUserData }; // <-- RETURN the fresh data
+    } else {
       return { success: false, error: generalError || 'Failed to fetch profile.' };
     }
-  }, [fetchUser, user, generalError]);
+  }, [fetchUser, generalError]); // <-- REMOVED 'user' dependency
 
-
-// Inside your AuthProvider in api.jsx
-
-const updateProfile = async (profileData) => {
-    setGeneralError(null); // Clear previous errors
+  // Update Profile Function
+  const updateProfile = async (profileData) => {
+    setGeneralError(null);
     try {
-        // This PATCH request correctly targets your custom endpoint for partial updates
-        const response = await api.patch('/user_profile/my-profile/update/', profileData);
+      const response = await api.patch('/user_profile/my-profile/update/', profileData);  // FIXED: Changed to correct endpoint
+      const updatedPartialUserData = response.data;  // FIXED: CompleteProfileSerializer returns data directly
 
-        // Flexibly handle backend response structure
-        const updatedPartialUserData = response.data.user || response.data;
+      // Merge with existing user data to prevent data loss on partial updates
+      const currentUser = JSON.parse(localStorage.getItem('user')) || {};
+      const mergedUser = { ...currentUser, ...updatedPartialUserData };
 
-        // --- FIX: Merge with existing user data before saving to localStorage ---
-        const currentUser = JSON.parse(localStorage.getItem('user')) || {};
-        const mergedUser = { ...currentUser, ...updatedPartialUserData };
+      setUser(mergedUser);
+      localStorage.setItem('user', JSON.stringify(mergedUser));
 
-        // Update React state with the complete, merged user object
-        setUser(mergedUser);
-        
-        // Update localStorage with the complete, merged user object to prevent data loss
-        localStorage.setItem('user', JSON.stringify(mergedUser));
-
-        return { success: true, data: mergedUser };
-
+      return { success: true, data: mergedUser };
     } catch (err) {
-        console.error('Failed to update user profile:', err.response?.data || err.message);
-        const errorData = err.response?.data;
+      console.error('Failed to update user profile:', err.response?.data || err.message);
+      const errorData = err.response?.data;
+      let errorMessage = 'An unexpected error occurred.';
 
-        if (errorData) {
-            if (errorData.detail) {
-                setGeneralError(errorData.detail);
-                return { success: false, error: errorData.detail };
-            }
-            // This correctly returns field-specific errors for display in your form
-            setGeneralError('Validation error. Please check your inputs.');
-            return { success: false, errors: errorData };
-        }
+      if (errorData) {
+        if (errorData.detail) errorMessage = errorData.detail;
+        else errorMessage = 'Validation error. Please check your inputs.';
         
-        // Fallback for network errors or other unexpected issues
-        setGeneralError('An unexpected error occurred during the profile update.');
-        return { success: false, error: 'An unexpected error occurred.' };
+        setGeneralError(errorMessage);
+        return { success: false, error: errorMessage, errors: errorData };
+      }
+      
+      setGeneralError(errorMessage);
+      return { success: false, error: errorMessage };
     }
-};
+  };
+
   // Initial load to check for token and fetch user
   useEffect(() => {
     const initializeAuth = async () => {
       setLoading(true); 
-      // If there's an access token, try to fetch user details
-      // This implicitly validates the token; if it's expired/invalid, interceptor handles refresh/logout
       await fetchUser(); 
       setLoading(false); 
     };
     initializeAuth();
-  }, [fetchUser]); // Only depend on fetchUser, as it handles accessToken internally
+  }, [fetchUser]);
 
   const authContextValue = {
     user,
