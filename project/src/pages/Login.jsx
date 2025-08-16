@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, Shield, Building } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../api.jsx';
 
 const Login = () => {
@@ -14,22 +14,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { login, logout, generalError: authContextGeneralError } = useAuth(); // Import logout and generalError
   const navigate = useNavigate();
-
-  // Demo credentials for testing
-  const demoCredentials = {
-    admin: {
-      email: 'admin@example.com',
-      password: 'admin123'
-    },
-    owner: {
-      email: 'owner@example.com',
-      password: 'owner123'
-    },
-    user: {
-      email: 'user@example.com',
-      password: 'user123'
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -130,18 +114,6 @@ const Login = () => {
     }
   };
 
-  const roleIcons = {
-    user: User,
-    owner: Building,
-    admin: Shield
-  };
-
-  const roleColors = {
-    user: 'bg-blue-500',
-    owner: 'bg-green-500',
-    admin: 'bg-purple-500'
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
       <motion.div
@@ -166,34 +138,6 @@ const Login = () => {
             Sign in to your BookMyBox account
           </p>
         </div>
-
-        {/* Demo Account Buttons */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4"
-        >
-          <h3 className="text-sm font-medium text-blue-900 mb-3">Demo Accounts</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {Object.entries(demoCredentials).map(([role, credentials]) => {
-              const IconComponent = roleIcons[role];
-              return (
-                <button
-                  key={role}
-                  onClick={() => handleDemoLogin(role)}
-                  className={`p-2 rounded-lg text-white text-xs font-medium transition-all hover:scale-105 ${roleColors[role]}`}
-                >
-                  <IconComponent size={16} className="mx-auto mb-1" />
-                  <div className="capitalize">{role}</div>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-blue-700 mt-2">
-            Click any role above to auto-fill demo credentials
-          </p>
-        </motion.div>
 
         <motion.form
           initial={{ opacity: 0 }}

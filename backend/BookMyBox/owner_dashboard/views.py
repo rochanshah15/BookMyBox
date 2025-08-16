@@ -87,7 +87,7 @@ class OwnerDashboardAPIView(APIView):
                 "date": b.date,
                 "amount": b.total_amount,
                 "status": b.booking_status,
-                "time_slot": f"{b.start_time.strftime('%H:%M')} - {b.end_time.strftime('%H:%M')}"
+                "time_slot": f"{b.start_time if isinstance(b.start_time, str) else b.start_time.strftime('%H:%M')} - {b.end_time if isinstance(b.end_time, str) else b.end_time.strftime('%H:%M')}"
             }
             for b in recent_bookings_qs
         ]
@@ -105,7 +105,7 @@ class OwnerDashboardAPIView(APIView):
             "revenue_chart_data": revenue_chart_data,
             "bookings_chart_labels": bookings_chart_labels,
             "bookings_chart_data": bookings_chart_data,
-            "recent_bookings": recent_bookings_qs,
+            "recent_bookings": recent_bookings_data,  # Use the formatted data instead of queryset
             "all_owner_boxes": all_owner_boxes,
         }
 

@@ -149,7 +149,7 @@ class OwnerBoxViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         box = serializer.save(
             owner=self.request.user,
-            status='approved',  # Changed from 'pending' to 'approved' so boxes appear immediately
+            status='pending',  # New boxes start as pending and require admin approval
             submitted_at=timezone.now()
         )
         images = self.request.FILES.getlist('images')

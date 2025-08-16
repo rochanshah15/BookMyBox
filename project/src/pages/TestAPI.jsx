@@ -10,8 +10,8 @@ const TestAPI = () => {
     const testFetch = async () => {
       console.log('TestAPI: Starting fetch...');
       try {
-        console.log('TestAPI: Making API call to /boxes/boxes/');
-        const response = await api.get('/boxes/boxes/');
+        console.log('TestAPI: Making API call to /boxes/public/');
+        const response = await api.get('/boxes/public/');
         console.log('TestAPI: Response received:', response.data);
         setBoxes(response.data.results || []);
       } catch (err) {

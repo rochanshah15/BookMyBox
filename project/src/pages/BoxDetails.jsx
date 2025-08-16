@@ -31,9 +31,11 @@ const BoxDetails = () => {
     const [duration, setDuration] = useState(1);
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [bookingLoading, setBookingLoading] = useState(false);
-    const [bookingData, setBookingData] = useState(null); // Still useful to hold temporary data for booking submission
-    const [error, setError] = useState(null); // State for handling fetch errors
-    const { boxes } = useBox(); // Keeping useBox for potential general box list, but fetching specific details via API
+    const [bookingData, setBookingData] = useState(null);
+    const [error, setError] = useState(null);
+    const [bookedSlots, setBookedSlots] = useState([]); // New state for booked time slots
+    const [slotsLoading, setSlotsLoading] = useState(false); // Loading state for slots
+    const { boxes } = useBox();
     const { createBooking } = useBooking();
     const { isAuthenticated, user } = useAuth();
 
@@ -51,6 +53,33 @@ const BoxDetails = () => {
         };
         checkFavorite();
     }, [user, box?.id]);
+
+    // Fetch booked time slots when box or selected date changes
+    useEffect(() => {
+        const fetchBookedSlots = async () => {
+            if (!box?.id || !selectedDate) return;
+            
+            setSlotsLoading(true);
+            try {
+                const dateString = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+                const response = await api.get(`/bookings/booked_slots/?box_id=${box.id}&date=${dateString}`);
+                setBookedSlots(response.data.booked_slots || []);
+            } catch (error) {
+                console.error('Error fetching booked slots:', error);
+                setBookedSlots([]); // Reset to empty if error
+            } finally {
+                setSlotsLoading(false);
+            }
+        };
+
+        fetchBookedSlots();
+
+        // Set up auto-refresh every 30 seconds to keep slots current
+        const intervalId = setInterval(fetchBookedSlots, 30000);
+
+        // Cleanup interval on unmount or dependency change
+        return () => clearInterval(intervalId);
+    }, [box?.id, selectedDate]); // Re-fetch when box or date changes
 
     const handleAddToFavorites = async () => {
         if (!user) {
@@ -78,7 +107,7 @@ const BoxDetails = () => {
             setError(null); // Clear previous errors
             try {
                 // Fetch box details from the backend using the imported 'api' (Axios instance)
-                const response = await api.get(`/boxes/${id}/`); // Adjust this endpoint to your actual backend API
+                const response = await api.get(`/boxes/public/${id}/`); // Updated to use public endpoint
                 const fetchedBox = response.data;
 
                 // Ensure rating is a number (backend might send it as string or number)
@@ -109,6 +138,31 @@ const BoxDetails = () => {
         '18:00', '19:00', '20:00', '21:00', '22:00'
     ];
 
+    // Helper function to check if a time slot is available
+    const isTimeSlotAvailable = (timeSlot) => {
+        if (!timeSlot || bookedSlots.length === 0) return true;
+        
+        // Check if the selected time slot conflicts with any booked slots
+        const selectedHour = parseInt(timeSlot.split(':')[0]);
+        
+        // Check if the duration of selected slot would conflict with booked slots
+        for (let i = 0; i < duration; i++) {
+            const checkHour = selectedHour + i;
+            const checkTime = `${checkHour.toString().padStart(2, '0')}:00`;
+            
+            if (bookedSlots.includes(checkTime)) {
+                return false;
+            }
+        }
+        
+        return true;
+    };
+
+    // Helper function to check if a time slot is booked
+    const isTimeSlotBooked = (timeSlot) => {
+        return bookedSlots.includes(timeSlot);
+    };
+
     const amenityIcons = {
         'Changing Room': Users,
         'Parking': Car,
@@ -127,6 +181,12 @@ const BoxDetails = () => {
 
         if (!selectedTimeSlot) {
             alert('Please select a time slot');
+            return;
+        }
+
+        // Check if the selected time slot is available
+        if (!isTimeSlotAvailable(selectedTimeSlot)) {
+            alert('Selected time slot is not available. Please choose a different time.');
             return;
         }
 
@@ -170,6 +230,15 @@ const BoxDetails = () => {
                 setSelectedTimeSlot('');
                 setDuration(1);
                 setSelectedDate(new Date());
+                
+                // Refresh booked slots to show the new booking
+                const dateString = selectedDate.toISOString().split('T')[0];
+                try {
+                    const response = await api.get(`/bookings/booked_slots/?box_id=${box.id}&date=${dateString}`);
+                    setBookedSlots(response.data.booked_slots || []);
+                } catch (error) {
+                    console.error('Error refreshing booked slots:', error);
+                }
             } else {
                 console.error('Backend booking creation failed:', result.error);
                 alert(`Booking failed: ${result.error || 'Please try again.'} 🙁`);
@@ -323,15 +392,20 @@ const BoxDetails = () => {
                         >
                             <h3 className="text-lg font-semibold mb-4">Amenities</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {box.amenities.map((amenity, index) => {
+                                {box.amenities && Array.isArray(box.amenities) ? box.amenities.map((amenity, index) => {
                                     const IconComponent = amenityIcons[amenity] || Shield;
                                     return (
                                         <div key={index} className="flex items-center space-x-2">
                                             <IconComponent size={18} className="text-primary-500" />
-                                            <span className="text-gray-700">{amenity}</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{amenity}</span>
                                         </div>
                                     );
-                                })}
+                                }) : (
+                                    <div className="flex items-center space-x-2">
+                                        <Shield size={18} className="text-primary-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">No amenities listed</span>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
 
@@ -345,12 +419,19 @@ const BoxDetails = () => {
                             >
                                 <h3 className="text-lg font-semibold mb-4">Rules & Guidelines</h3>
                                 <ul className="space-y-2">
-                                    {box.rules.map((rule, index) => (
+                                    {box.rules && Array.isArray(box.rules) ? box.rules.map((rule, index) => (
                                         <li key={index} className="flex items-start">
                                             <span className="text-primary-500 mr-2">•</span>
-                                            <span className="text-gray-700">{rule}</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{rule}</span>
                                         </li>
-                                    ))}
+                                    )) : (
+                                        <li className="flex items-start">
+                                            <span className="text-primary-500 mr-2">•</span>
+                                            <span className="text-gray-700 dark:text-gray-300">
+                                                {box.rules || "No specific rules provided"}
+                                            </span>
+                                        </li>
+                                    )}
                                 </ul>
                             </motion.div>
                         )}
@@ -365,8 +446,8 @@ const BoxDetails = () => {
                             >
                                 <h3 className="text-lg font-semibold mb-4">Reviews</h3>
                                 <div className="space-y-4">
-                                    {box.reviews.map((review) => (
-                                        <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                                    {box.reviews && Array.isArray(box.reviews) && box.reviews.length > 0 ? box.reviews.map((review) => (
+                                        <div key={review.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center space-x-2">
                                                     <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-medium">
@@ -386,10 +467,14 @@ const BoxDetails = () => {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <p className="text-gray-600">{review.comment}</p>
-                                            <p className="text-sm text-gray-500 mt-1">{review.date}</p>
+                                            <p className="text-gray-600 dark:text-gray-400">{review.comment}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{review.date}</p>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <div className="text-center py-8">
+                                            <p className="text-gray-500 dark:text-gray-400">No reviews yet. Be the first to review this box!</p>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -423,23 +508,61 @@ const BoxDetails = () => {
 
                             {/* Time Slots */}
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Select Time Slot
                                 </label>
-                                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                                    {timeSlots.map((time) => (
-                                        <button
-                                            key={time}
-                                            onClick={() => setSelectedTimeSlot(time)}
-                                            className={`p-2 text-sm rounded border transition-colors ${
-                                                selectedTimeSlot === time
-                                                    ? 'bg-primary-500 text-white border-primary-500'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-primary-500'
-                                            }`}
-                                        >
-                                            {time}
-                                        </button>
-                                    ))}
+                                {slotsLoading ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                        <span className="text-sm text-gray-600 dark:text-gray-400">Loading available slots...</span>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                                        {timeSlots.map((time) => {
+                                            const isBooked = isTimeSlotBooked(time);
+                                            const isSelected = selectedTimeSlot === time;
+                                            const canSelect = !isBooked && isTimeSlotAvailable(time);
+                                            
+                                            return (
+                                                <button
+                                                    key={time}
+                                                    onClick={() => canSelect ? setSelectedTimeSlot(time) : null}
+                                                    disabled={isBooked || !canSelect}
+                                                    className={`p-2 text-sm rounded border transition-all duration-200 ${
+                                                        isBooked
+                                                            ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700 cursor-not-allowed'
+                                                            : isSelected
+                                                            ? 'bg-primary-500 text-white border-primary-500'
+                                                            : canSelect
+                                                            ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900'
+                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                                                    }`}
+                                                    title={isBooked ? 'This time slot is already booked' : canSelect ? 'Available' : 'Not available for selected duration'}
+                                                >
+                                                    {time}
+                                                    {isBooked && (
+                                                        <div className="text-xs mt-1 font-medium">Booked</div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
+                                {/* Legend */}
+                                <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Available</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-primary-500 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Selected</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Booked</span>
+                                    </div>
                                 </div>
                             </div>
 

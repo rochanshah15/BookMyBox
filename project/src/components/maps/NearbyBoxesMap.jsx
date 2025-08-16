@@ -110,12 +110,14 @@ const NearbyBoxesMap = ({ isOpen, onClose }) => {
 
     // Use useCallback for handleLocationFound to make it stable across renders
     const handleLocationFound = useCallback((location) => {
+        console.log('NearbyBoxesMap: Location found:', location);
         setUserLocation(location);
     }, []);
 
     useEffect(() => {
         if (userLocation) {
             // Fetch nearby boxes whenever userLocation or searchRadius changes
+            console.log('NearbyBoxesMap: Fetching nearby boxes with location:', userLocation, 'radius:', searchRadius);
             fetchNearbyBoxes(userLocation.lat, userLocation.lng, searchRadius); 
         }
     }, [userLocation, searchRadius, fetchNearbyBoxes]);

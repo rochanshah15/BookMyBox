@@ -113,10 +113,10 @@ const OwnerDashboard = () => {
   // --- RENDER LOGIC ---
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -124,24 +124,24 @@ const OwnerDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 font-semibold">{error}</p>
+          <p className="text-red-600 dark:text-red-400 font-semibold">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="container-max section-padding">
         {/* Header (Restored with dynamic pending count) */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center justify-between">
             <div>
               {/* Replace user?.name with user?.first_name || user?.email || 'Owner' for better fallback */}
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {user?.first_name || user?.email || 'Owner'}! 🏢</h1>
-              <p className="text-gray-600">Manage your sports facilities and track performance</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome, {user?.first_name || user?.email || 'Owner'}! 🏢</h1>
+              <p className="text-gray-600 dark:text-gray-400">Manage your sports facilities and track performance</p>
             </div>
             {pending_boxes_count > 0 && (
               <div className="hidden md:flex bg-yellow-100 border border-yellow-300 rounded-lg p-4">
@@ -160,8 +160,8 @@ const OwnerDashboard = () => {
             <motion.div key={stat.title} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.1 }} className="card p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 </div>
                 <div className={`${stat.color} p-3 rounded-lg`}><stat.icon size={24} className="text-white" /></div>
               </div>
@@ -188,15 +188,16 @@ const OwnerDashboard = () => {
                   <div className="card p-6"><h4 className="font-medium mb-4">Weekly Bookings</h4><Bar data={bookingsData} options={chartOptions} /></div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 card p-6"><h4 className="font-medium mb-4">Recent Bookings</h4>
+                  <div className="lg:col-span-2 card p-6"><h4 className="font-medium mb-4 text-gray-900 dark:text-white">Recent Bookings</h4>
                     <div className="space-y-3">
                       {recent_bookings.length > 0 ? recent_bookings.map((booking) => (
-                        <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div>
-                            <p className="font-medium text-gray-900">{booking.user_name || 'Customer'}</p>
-                            <p className="text-sm text-gray-600">{booking.box_name} • {new Date(booking.date).toLocaleDateString()}</p>
+                            <p className="font-medium text-gray-900 dark:text-white">{booking.user_name || 'Customer'}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{booking.box_name} • {new Date(booking.date).toLocaleDateString()}</p>
+                            {booking.time_slot && <p className="text-xs text-gray-500 dark:text-gray-500">{booking.time_slot}</p>}
                           </div>
-                          <p className="font-medium">₹{booking.amount}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">₹{booking.amount}</p>
                         </div>
                       )) : <Placeholder text="No recent bookings." />}
                     </div>
@@ -244,16 +245,44 @@ const OwnerDashboard = () => {
             {/* Bookings Tab (Fully Restored) */}
             {activeTab === 'bookings' && (
                <div className="space-y-6">
-                 <h3 className="text-lg font-semibold">Recent Bookings Across All Your Venues</h3>
+                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Bookings Across All Your Venues</h3>
                  <div className="overflow-x-auto">
-                   <table className="w-full">
-                     <thead><tr className="border-b"><th className="text-left p-3">Customer</th><th className="text-left p-3">Box</th><th className="text-left p-3">Date</th><th className="text-left p-3">Amount</th><th className="text-left p-3">Status</th></tr></thead>
+                   <table className="w-full bg-white dark:bg-gray-800 rounded-lg">
+                     <thead>
+                       <tr className="border-b border-gray-200 dark:border-gray-700">
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Customer</th>
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Box</th>
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Date</th>
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Time Slot</th>
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Amount</th>
+                         <th className="text-left p-3 text-gray-700 dark:text-gray-300 font-medium">Status</th>
+                       </tr>
+                     </thead>
                      <tbody>
                        {recent_bookings.length > 0 ? recent_bookings.map((booking) => (
-                         <tr key={booking.id} className="border-b hover:bg-gray-50">
-                           <td className="p-3">{booking.user_name}</td><td className="p-3">{booking.box_name}</td><td className="p-3">{new Date(booking.date).toLocaleDateString()}</td><td className="p-3">₹{booking.amount}</td><td className="p-3"><span className="capitalize">{booking.status}</span></td>
+                         <tr key={booking.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                           <td className="p-3 text-gray-900 dark:text-white">{booking.user_name || 'Customer'}</td>
+                           <td className="p-3 text-gray-900 dark:text-white">{booking.box_name || 'N/A'}</td>
+                           <td className="p-3 text-gray-900 dark:text-white">{new Date(booking.date).toLocaleDateString()}</td>
+                           <td className="p-3 text-gray-900 dark:text-white">{booking.time_slot || 'N/A'}</td>
+                           <td className="p-3 text-gray-900 dark:text-white font-semibold">₹{booking.amount || '0'}</td>
+                           <td className="p-3">
+                             <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                               booking.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' :
+                               booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300' :
+                               'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                             }`}>
+                               {booking.status || 'pending'}
+                             </span>
+                           </td>
                          </tr>
-                       )) : <tr><td colSpan="5"><Placeholder text="No bookings found." /></td></tr>}
+                       )) : (
+                         <tr>
+                           <td colSpan="6" className="p-8">
+                             <Placeholder text="No bookings found." />
+                           </td>
+                         </tr>
+                       )}
                      </tbody>
                    </table>
                  </div>

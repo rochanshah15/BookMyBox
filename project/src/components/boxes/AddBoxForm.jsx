@@ -134,10 +134,10 @@ const AddBoxForm = ({ isOpen, onClose, onSuccess }) => {
   if (submitted) {
     return (
       <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><Check size={32} className="text-green-600" /></div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Box Submitted Successfully!</h3>
-          <p className="text-gray-600 mb-4">Your sports box has been submitted for admin approval. You'll be notified once it's reviewed.</p>
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4"><Check size={32} className="text-green-600 dark:text-green-400" /></div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Box Submitted Successfully!</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Your sports box has been submitted and is now <span className="font-semibold text-yellow-600 dark:text-yellow-400">pending admin approval</span>. You'll be notified once it's reviewed and approved.</p>
         </motion.div>
       </div>
     )

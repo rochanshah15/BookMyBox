@@ -91,12 +91,14 @@ const Home = () => {
                   <span>Explore Boxes</span>
                   <ArrowRight size={20} />
                 </Link>
-                <Link
-                  to="/signup"
-                  className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 text-center"
-                >
-                  Join Now
-                </Link>
+                {!isAuthenticated && (
+                  <Link
+                    to="/signup"
+                    className="border-2 border-white text-white hover:bg-white hover:text-primary-600 px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 text-center"
+                  >
+                    Join Now
+                  </Link>
+                )}
               </div>
             </motion.div>
             

@@ -88,10 +88,18 @@ export const BoxProvider = ({ children }) => {
     }, [processBoxData]);
 
     const fetchNearbyBoxes = useCallback(async (latitude, longitude, radius = 10) => {
+        // Add validation
+        if (!latitude || !longitude) {
+            console.error('fetchNearbyBoxes: Missing latitude or longitude', { latitude, longitude });
+            setError('Invalid location data for nearby search.');
+            return;
+        }
+        
         setLoading(true);
         try {
-            const response = await api.get('/boxes/nearby/', { 
-                params: { lat: latitude, lng: longitude, radius } 
+            console.log('fetchNearbyBoxes: Making API call with params:', { lat: latitude, lng: longitude, radius });
+            const response = await api.get('/boxes/public/nearby/', { 
+                params: { lat: latitude, lng: longitude, radius: radius || 10 }
             });
             setNearbyBoxes(processBoxData(response.data));
         } catch (err) {
@@ -109,7 +117,7 @@ export const BoxProvider = ({ children }) => {
             console.log('BoxContext: Making API call with params:', filters);
             
             // Single API call - no pagination needed since API returns all results
-            const response = await api.get('/boxes/', { params: filters });
+            const response = await api.get('/boxes/public/', { params: filters });
             const data = response.data;
             
             console.log('BoxContext: API Response - Count:', data.count, 'Results:', data.results?.length || 0);
@@ -142,7 +150,7 @@ export const BoxProvider = ({ children }) => {
     const fetchFeaturedBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/featured/');
+            const response = await api.get('/boxes/public/featured/');
             setFeaturedBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching featured boxes:', err);
@@ -155,7 +163,7 @@ export const BoxProvider = ({ children }) => {
     const fetchPopularBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/popular/');
+            const response = await api.get('/boxes/public/popular/');
             setPopularBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching popular boxes:', err);
