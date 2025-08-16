@@ -63,9 +63,9 @@ const Home = () => {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-600 to-primary-800 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-primary-600 to-primary-800 dark:from-primary-700 dark:to-primary-900 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-20"></div>
         <div className="relative container-max section-padding py-20 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -108,20 +108,29 @@ const Home = () => {
             >
               <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20">
                 <img
-                  src="https://images.pexels.com/photos/163452/basketball-dunk-blue-game-163452.jpeg"
-                  alt="Sports facility"
-                  className="w-full h-64 object-cover rounded-lg"
+                  src="http://localhost:8000/media/box_images/pexels-grizzlybear-399187.jpg"
+                  alt="Sports Box"
+                  className="w-full h-64 object-cover rounded-lg mb-4"
+                  onError={(e) => {
+                    e.target.src = 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=400&h=300&q=80'
+                  }}
                 />
-                <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-semibold mb-2">Find Your Perfect Box</h3>
+                  <p className="text-primary-100">Over 1000+ sports boxes available across India</p>
+                </div>
+                
+                {/* Stats Section */}
+                <div className="grid grid-cols-2 gap-4">
                   {stats.map((stat, index) => (
                     <motion.div
                       key={stat.label}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
+                      transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
                       className="text-center"
                     >
-                      <div className="text-2xl font-bold text-accent-500">{stat.number}</div>
+                      <div className="text-2xl font-bold text-accent-400 mb-1">{stat.number}</div>
                       <div className="text-sm text-primary-100">{stat.label}</div>
                     </motion.div>
                   ))}
@@ -132,20 +141,20 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Sports Categories */}
-      <section className="py-20 bg-white">
+      {/* Sports Section */}
+      <section className="py-20 bg-white dark:bg-gray-800 transition-colors duration-200">
         <div className="container-max section-padding">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-              Choose Your Sport
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Popular Sports
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              From cricket to basketball, find the perfect facility for your favorite sport
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Find boxes for your favorite sports across multiple cities
             </p>
           </motion.div>
 
@@ -162,8 +171,8 @@ const Home = () => {
                 <div className={`${sport.color} w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4`}>
                   {sport.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{sport.name}</h3>
-                <p className="text-gray-600">{sport.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{sport.name}</h3>
+                <p className="text-gray-600 dark:text-gray-400">{sport.description}</p>
               </motion.div>
             ))}
           </div>
@@ -171,7 +180,7 @@ const Home = () => {
       </section>
 
       {/* Featured Boxes */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <div className="container-max section-padding">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -179,10 +188,10 @@ const Home = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Featured Boxes
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Handpicked premium sports facilities with top ratings
             </p>
           </motion.div>
@@ -214,14 +223,14 @@ const Home = () => {
                   </div>
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">{box.name}</h3>
-                      <span className="text-primary-600 font-bold">₹{box.price}/hr</span>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{box.name}</h3>
+                      <span className="text-primary-600 dark:text-primary-400 font-bold">₹{box.price}/hr</span>
                     </div>
-                    <div className="flex items-center text-gray-600 mb-2">
+                    <div className="flex items-center text-gray-600 dark:text-gray-400 mb-2">
                       <MapPin size={16} className="mr-1" />
                       <span className="text-sm">{box.location}</span>
                     </div>
-                    <div className="flex items-center text-gray-600 mb-4">
+                    <div className="flex items-center text-gray-600 dark:text-gray-400 mb-4">
                       <Users size={16} className="mr-1" />
                       <span className="text-sm">Up to {box.capacity} players</span>
                     </div>
@@ -240,7 +249,7 @@ const Home = () => {
       </section>
 
       {/* Popular Boxes */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-800 transition-colors duration-200">
         <div className="container-max section-padding">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -248,10 +257,10 @@ const Home = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-4">
               Trending Now
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Most popular sports boxes based on user bookings and ratings
             </p>
           </motion.div>
@@ -282,10 +291,10 @@ const Home = () => {
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-1">{box.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{box.sport}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{box.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{box.sport}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-primary-600 font-bold text-sm">₹{box.price}/hr</span>
+                      <span className="text-primary-600 dark:text-primary-400 font-bold text-sm">₹{box.price}/hr</span>
                       <div className="flex items-center">
                         <Star size={14} className="text-yellow-500 fill-current mr-1" />
                         <span className="text-sm">{box.rating}</span>

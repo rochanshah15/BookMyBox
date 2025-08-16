@@ -164,17 +164,17 @@ const Profile = () => {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="ml-3 text-lg text-gray-700">Loading profile...</p>
+        <p className="ml-3 text-lg text-gray-700 dark:text-gray-300">Loading profile...</p>
       </div>
     );
   }
 
   if (!user && !profileLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-700">Please log in to view your profile.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+        <p className="text-lg text-gray-700 dark:text-gray-300">Please log in to view your profile.</p>
       </div>
     );
   }
@@ -183,7 +183,7 @@ const Profile = () => {
   const avatarLetter = displayName.charAt(0).toUpperCase() || 'U';
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 transition-colors duration-200">
       <div className="container-max section-padding">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -193,8 +193,8 @@ const Profile = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-              <p className="text-gray-600">Manage your personal information and preferences</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profile</h1>
+              <p className="text-gray-600 dark:text-gray-400">Manage your personal information and preferences</p>
             </div>
             {!isEditing && (
               <button
@@ -248,21 +248,21 @@ const Profile = () => {
                     </button>
                   )}
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">{displayName}</h2>
-                <p className="text-gray-600 mb-4">{formData.email}</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{displayName}</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">{formData.email}</p>
 
                 <div className="space-y-3 text-left">
                   <div className="flex items-center space-x-3">
-                    <Phone size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-600">{formData.phone || 'N/A'}</span>
+                    <Phone size={16} className="text-gray-400 dark:text-gray-500" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{formData.phone || 'N/A'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <MapPin size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-600">{formData.location || 'N/A'}</span>
+                    <MapPin size={16} className="text-gray-400 dark:text-gray-500" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{formData.location || 'N/A'}</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <Calendar size={16} className="text-gray-400" />
-                    <span className="text-sm text-gray-600">
+                    <Calendar size={16} className="text-gray-400 dark:text-gray-500" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
                       {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
@@ -277,7 +277,7 @@ const Profile = () => {
                   transition={{ delay: 0.1 }}
                   className="card p-6 mt-6"
                 >
-                  <h3 className="font-semibold text-gray-900 mb-4">Preferred Sports</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Preferred Sports</h3>
                   <div className="flex flex-wrap gap-2">
                     {formData.preferredSports.length > 0 ? (
                       formData.preferredSports.map((sport) => (
@@ -303,11 +303,11 @@ const Profile = () => {
                 animate={{ opacity: 1, x: 0 }}
                 className="card p-6"
               >
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Personal Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">First Name</label>
                     {isEditing ? (
                       <>
                         <input
@@ -320,13 +320,13 @@ const Profile = () => {
                         {formErrors.firstName && <div className="text-red-500 text-xs mt-1">{formErrors.firstName[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.firstName || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.firstName || 'N/A'}</p>
                     )}
                   </div>
 
                   {/* Last Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Last Name</label>
                     {isEditing ? (
                       <>
                         <input
@@ -339,19 +339,19 @@ const Profile = () => {
                         {formErrors.lastName && <div className="text-red-500 text-xs mt-1">{formErrors.lastName[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.lastName || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.lastName || 'N/A'}</p>
                     )}
                   </div>
 
                   {/* Email (Read-only) */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <p className="text-gray-500 bg-gray-100 p-2 rounded-md">{formData.email || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
+                    <p className="text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-2 rounded-md">{formData.email || 'N/A'}</p>
                   </div>
 
                   {/* Phone Number */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Phone Number</label>
                     {isEditing ? (
                       <>
                         <input
@@ -364,13 +364,13 @@ const Profile = () => {
                         {formErrors.phone && <div className="text-red-500 text-xs mt-1">{formErrors.phone[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.phone || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.phone || 'N/A'}</p>
                     )}
                   </div>
                   
                   {/* Date of Birth */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date of Birth</label>
                     {isEditing ? (
                       <>
                         <input
@@ -383,7 +383,7 @@ const Profile = () => {
                         {formErrors.dateOfBirth && <div className="text-red-500 text-xs mt-1">{formErrors.dateOfBirth[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
                     )}
                   </div>
                 </div>
@@ -391,7 +391,7 @@ const Profile = () => {
                 <div className="grid grid-cols-1 gap-6 mt-6">
                   {/* Location, Address, Bio, Emergency Contact */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Location</label>
                     {isEditing ? (
                       <>
                         <input
@@ -404,11 +404,11 @@ const Profile = () => {
                         {formErrors.location && <div className="text-red-500 text-xs mt-1">{formErrors.location[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.location || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.location || 'N/A'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Address</label>
                     {isEditing ? (
                       <>
                         <textarea
@@ -421,11 +421,11 @@ const Profile = () => {
                         {formErrors.address && <div className="text-red-500 text-xs mt-1">{formErrors.address[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.address || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.address || 'N/A'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
                     {isEditing ? (
                       <>
                         <textarea
@@ -439,11 +439,11 @@ const Profile = () => {
                         {formErrors.bio && <div className="text-red-500 text-xs mt-1">{formErrors.bio[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.bio || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.bio || 'N/A'}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Emergency Contact</label>
                     {isEditing ? (
                       <>
                         <input
@@ -456,15 +456,15 @@ const Profile = () => {
                         {formErrors.emergencyContact && <div className="text-red-500 text-xs mt-1">{formErrors.emergencyContact[0]}</div>}
                       </>
                     ) : (
-                      <p className="text-gray-900">{formData.emergencyContact || 'N/A'}</p>
+                      <p className="text-gray-900 dark:text-gray-200">{formData.emergencyContact || 'N/A'}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Sports Preferences - Edit Mode */}
                 {isEditing && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">Preferred Sports</label>
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Preferred Sports</label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       {sports.map((sport) => (
                         <label key={sport} className="flex items-center space-x-2 cursor-pointer">
@@ -474,7 +474,7 @@ const Profile = () => {
                             onChange={() => handleSportToggle(sport)}
                             className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                           />
-                          <span className="text-sm text-gray-700">{sport}</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{sport}</span>
                         </label>
                       ))}
                     </div>
@@ -484,10 +484,10 @@ const Profile = () => {
 
                 {/* Action Buttons in Edit Mode */}
                 {isEditing && (
-                  <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
                     <button
                       onClick={handleCancelEdit}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
                       disabled={saveLoading}
                     >
                       <X size={18} />

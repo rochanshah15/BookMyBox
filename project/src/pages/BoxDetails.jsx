@@ -185,7 +185,7 @@ const BoxDetails = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
                 <Loader text="Loading box details..." />
             </div>
         );
@@ -193,10 +193,10 @@ const BoxDetails = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+                <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-                    <p className="text-gray-700 mb-6">{error}</p>
+                    <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
                     <Link to="/boxes" className="btn-primary">
                         Browse Other Boxes
                     </Link>
@@ -207,10 +207,10 @@ const BoxDetails = () => {
 
     if (!box) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Box not found</h2>
-                    <p className="text-gray-700 mb-6">The box you are looking for does not exist or has been removed.</p>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+                <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Box not found</h2>
+                    <p className="text-gray-700 dark:text-gray-300 mb-6">The box you are looking for does not exist or has been removed.</p>
                     <Link to="/boxes" className="btn-primary">
                         Browse Other Boxes
                     </Link>
@@ -220,13 +220,13 @@ const BoxDetails = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
             {/* Back Button */}
-            <div className="bg-white border-b">
+            <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 transition-colors duration-200">
                 <div className="container-max section-padding py-4">
                     <Link
                         to="/boxes"
-                        className="inline-flex items-center text-gray-600 hover:text-primary-500 transition-colors"
+                        className="inline-flex items-center text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
                     >
                         <ArrowLeft size={20} className="mr-2" />
                         Back to Boxes

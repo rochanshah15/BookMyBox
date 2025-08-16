@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Menu, X, User, LogOut, Map } from 'lucide-react'
 import { useAuth } from '../../api.jsx'
+import ThemeToggle from './ThemeToggle'
 import NearbyBoxesMap from '../maps/NearbyBoxesMap'
 
 const Header = () => {
@@ -39,7 +40,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="bg-white shadow-lg sticky top-0 z-50">
+      <header className="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-200">
         <div className="container-max section-padding">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -50,7 +51,7 @@ const Header = () => {
               >
                 <span className="font-bold text-xl">BMB</span>
               </motion.div>
-              <span className="font-bold text-xl text-gray-800">BookMyBox</span>
+              <span className="font-bold text-xl text-gray-800 dark:text-white">BookMyBox</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -59,14 +60,14 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.path}
-                  className="text-gray-600 hover:text-primary-500 font-medium transition-colors duration-200"
+                  className="text-gray-600 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 font-medium transition-colors duration-200"
                 >
                   {item.name}
                 </Link>
               ))}
               <button
                 onClick={() => setShowMap(true)}
-                className="flex items-center space-x-2 text-gray-600 hover:text-primary-500 font-medium transition-colors duration-200"
+                className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 font-medium transition-colors duration-200"
               >
                 <Map size={18} />
                 <span>Nearby Boxes</span>
@@ -75,18 +76,19 @@ const Header = () => {
 
             {/* Desktop Auth */}
             <div className="hidden md:flex items-center space-x-4">
+              <ThemeToggle />
               {isAuthenticated ? (
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors duration-200"
+                    className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-2 rounded-lg transition-colors duration-200"
                   >
-                    <User size={20} />
-                    <span className="font-medium">{user?.name}</span>
+                    <User size={20} className="text-gray-600 dark:text-gray-300" />
+                    <span className="font-medium text-gray-800 dark:text-white">{user?.name}</span>
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      user?.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                      user?.role === 'owner' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
+                      user?.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' :
+                      user?.role === 'owner' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' :
+                      'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
                     }`}>
                       {user?.role}
                     </span>
@@ -96,25 +98,25 @@ const Header = () => {
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2"
+                      className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2"
                     >
                       <Link
                         to={getDashboardRoute()}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Dashboard
                       </Link>
                       <Link
                         to="/profile"
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         Profile
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        className="w-full text-left px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-2"
                       >
                         <LogOut size={16} />
                         <span>Logout</span>
@@ -126,7 +128,7 @@ const Header = () => {
                 <div className="flex items-center space-x-3">
                   <Link
                     to="/login"
-                    className="text-gray-600 hover:text-primary-500 font-medium transition-colors duration-200"
+                    className="text-gray-600 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 font-medium transition-colors duration-200"
                   >
                     Login
                   </Link>
@@ -141,12 +143,15 @@ const Header = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            <div className="md:hidden flex items-center space-x-2">
+              <ThemeToggle />
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu */}
@@ -155,14 +160,14 @@ const Header = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-gray-200 py-4"
+              className="md:hidden border-t border-gray-200 dark:border-gray-700 py-4"
             >
               <nav className="flex flex-col space-y-4">
                 {navItems.map((item) => (
                   <Link
                     key={item.name}
                     to={item.path}
-                    className="text-gray-600 hover:text-primary-500 font-medium transition-colors duration-200"
+                    className="text-gray-600 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 font-medium transition-colors duration-200"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {item.name}
@@ -174,7 +179,7 @@ const Header = () => {
                     setShowMap(true)
                     setIsMenuOpen(false)
                   }}
-                  className="flex items-center space-x-2 text-gray-600 hover:text-primary-500 font-medium transition-colors duration-200"
+                  className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 font-medium transition-colors duration-200"
                 >
                   <Map size={18} />
                   <span>Nearby Boxes</span>

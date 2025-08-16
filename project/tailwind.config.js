@@ -4,11 +4,21 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
+      screens: {
+        'xs': '475px',
+      },
       colors: {
-        background: '#f9fafb',
-        foreground: '#111827',
+        background: {
+          DEFAULT: '#f9fafb',
+          dark: '#0f172a'
+        },
+        foreground: {
+          DEFAULT: '#111827',
+          dark: '#f1f5f9'
+        },
         primary: {
           50: '#ecfdf5',
           100: '#d1fae5',
@@ -20,6 +30,7 @@ export default {
         secondary: {
           500: '#3b82f6',
           600: '#2563eb',
+          700: '#1d4ed8',
         },
         accent: {
           500: '#f59e0b',

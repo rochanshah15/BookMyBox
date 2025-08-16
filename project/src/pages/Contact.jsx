@@ -174,7 +174,7 @@ const Contact = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-20">
         <div className="container-max section-padding">
@@ -194,7 +194,7 @@ const Contact = () => {
       </section>
 
       {/* Contact Info Cards */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-white dark:bg-gray-800 transition-colors duration-200">
         <div className="container-max section-padding">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {contactInfo.map((info, index) => (
@@ -205,12 +205,12 @@ const Contact = () => {
                 transition={{ delay: index * 0.1 }}
                 className="card p-6 text-center hover:shadow-xl transition-all duration-300"
               >
-                <div className="bg-primary-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <info.icon size={24} className="text-primary-600" />
+                <div className="bg-primary-100 dark:bg-primary-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <info.icon size={24} className="text-primary-600 dark:text-primary-400" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">{info.title}</h3>
-                <p className="text-gray-900 font-medium mb-1">{info.details}</p>
-                <p className="text-sm text-gray-600">{info.description}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{info.title}</h3>
+                <p className="text-gray-900 dark:text-gray-200 font-medium mb-1">{info.details}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{info.description}</p>
               </motion.div>
             ))}
           </div>
@@ -218,7 +218,7 @@ const Contact = () => {
       </section>
 
       {/* Contact Form & Map */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
         <div className="container-max section-padding">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
@@ -228,14 +228,14 @@ const Contact = () => {
               className="card p-8"
             >
               <div className="flex items-center mb-6">
-                <MessageCircle className="text-primary-600 mr-3" size={24} />
-                <h2 className="text-2xl font-bold text-gray-900">Send us a Message</h2>
+                <MessageCircle className="text-primary-600 dark:text-primary-400 mr-3" size={24} />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Send us a Message</h2>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Full Name *
                     </label>
                     <input
@@ -251,7 +251,7 @@ const Contact = () => {
                     {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                   </div>
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Phone Number
                     </label>
                     <input
@@ -268,7 +268,7 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email Address *
                   </label>
                   <input
@@ -285,7 +285,7 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Inquiry Type
                   </label>
                   <select
@@ -304,7 +304,7 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Subject *
                   </label>
                   <input
@@ -321,7 +321,7 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Message *
                   </label>
                   <textarea
@@ -380,37 +380,37 @@ const Contact = () => {
 
               {/* Office Hours */}
               <div className="card p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Office Hours</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Office Hours</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Monday - Friday</span>
-                    <span className="font-medium">8:00 AM - 6:00 PM</span>
+                    <span className="text-gray-600 dark:text-gray-400">Monday - Friday</span>
+                    <span className="font-medium text-gray-900 dark:text-white">8:00 AM - 6:00 PM</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Saturday</span>
-                    <span className="font-medium">9:00 AM - 4:00 PM</span>
+                    <span className="text-gray-600 dark:text-gray-400">Saturday</span>
+                    <span className="font-medium text-gray-900 dark:text-white">9:00 AM - 4:00 PM</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Sunday</span>
-                    <span className="font-medium">Closed</span>
+                    <span className="text-gray-600 dark:text-gray-400">Sunday</span>
+                    <span className="font-medium text-gray-900 dark:text-white">Closed</span>
                   </div>
                 </div>
               </div>
 
               {/* Quick Links */}
               <div className="card p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Quick Links</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Links</h3>
                 <div className="space-y-2">
-                  <a href="/faq" className="block text-primary-600 hover:text-primary-700 text-sm">
+                  <a href="/faq" className="block text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm">
                     Frequently Asked Questions
                   </a>
-                  <a href="/support" className="block text-primary-600 hover:text-primary-700 text-sm">
+                  <a href="/support" className="block text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm">
                     Support Center
                   </a>
-                  <a href="/partnership" className="block text-primary-600 hover:text-primary-700 text-sm">
+                  <a href="/partnership" className="block text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm">
                     Partner with Us
                   </a>
-                  <a href="/careers" className="block text-primary-600 hover:text-primary-700 text-sm">
+                  <a href="/careers" className="block text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-sm">
                     Careers
                   </a>
                 </div>
@@ -421,17 +421,17 @@ const Contact = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-800 transition-colors duration-200">
         <div className="container-max section-padding">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
               Find quick answers to common questions about BookMyBox
             </p>
           </motion.div>
@@ -445,8 +445,8 @@ const Contact = () => {
                 transition={{ delay: index * 0.1 }}
                 className="card p-6"
               >
-                <h3 className="font-semibold text-gray-900 mb-2">{item.question}</h3>
-                <p className="text-gray-600">{item.answer}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{item.question}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{item.answer}</p>
               </motion.div>
             ))}
           </div>
