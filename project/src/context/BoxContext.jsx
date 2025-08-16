@@ -58,7 +58,7 @@ export const BoxProvider = ({ children }) => {
             });
         }
         try {
-            await api.post('/boxes/owner/boxes/', formData, {
+            await api.post('/boxes/owner/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             await fetchOwnerBoxes();
@@ -76,7 +76,7 @@ export const BoxProvider = ({ children }) => {
     const fetchOwnerBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/owner/boxes/');
+            const response = await api.get('/boxes/owner/');
             console.log('Owner boxes fetched:', response.data);
             setOwnerBoxes(processBoxData(response.data.results || response.data));
         } catch (err) {
@@ -90,7 +90,7 @@ export const BoxProvider = ({ children }) => {
     const fetchNearbyBoxes = useCallback(async (latitude, longitude, radius = 10) => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/nearby/', { 
+            const response = await api.get('/boxes/nearby/', { 
                 params: { lat: latitude, lng: longitude, radius } 
             });
             setNearbyBoxes(processBoxData(response.data));
@@ -106,12 +106,34 @@ export const BoxProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await api.get('/boxes/boxes/', { params: filters });
-            const boxesData = processBoxData(response.data.results || response.data);
-            setBoxes(boxesData);
+            console.log('BoxContext: Making API call with params:', filters);
+            
+            // Single API call - no pagination needed since API returns all results
+            const response = await api.get('/boxes/', { params: filters });
+            const data = response.data;
+            
+            console.log('BoxContext: API Response - Count:', data.count, 'Results:', data.results?.length || 0);
+            console.log('BoxContext: First 5 Box IDs:', data.results?.slice(0, 5)?.map(box => box.id) || []);
+            
+            // Handle response
+            const boxesArray = data.results || data;
+            if (!Array.isArray(boxesArray)) {
+                console.error('BoxContext: Invalid response format - not an array:', boxesArray);
+                setError('Invalid response format from server');
+                return;
+            }
+            
+            const processedBoxes = processBoxData(boxesArray);
+            console.log('BoxContext: Processed boxes:', processedBoxes.length);
+            setBoxes(processedBoxes);
+            
         } catch (err) {
-            console.error('Error fetching boxes:', err);
-            setError('Could not load boxes.');
+            console.error('BoxContext: Error fetching boxes:', err);
+            if (err.response) {
+                console.error('BoxContext: Response status:', err.response.status);
+                console.error('BoxContext: Response data:', err.response.data);
+            }
+            setError('Could not load boxes. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -120,7 +142,7 @@ export const BoxProvider = ({ children }) => {
     const fetchFeaturedBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/featured/');
+            const response = await api.get('/boxes/featured/');
             setFeaturedBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching featured boxes:', err);
@@ -133,7 +155,7 @@ export const BoxProvider = ({ children }) => {
     const fetchPopularBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/popular/');
+            const response = await api.get('/boxes/popular/');
             setPopularBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching popular boxes:', err);
@@ -145,15 +167,9 @@ export const BoxProvider = ({ children }) => {
 
     // Fetch boxes when filters change
     useEffect(() => {
+        console.log('BoxContext: Filters changed, fetching boxes with filters:', filters);
         fetchBoxes();
-    }, [filters, fetchBoxes]);
-
-    // Initial fetch on component mount (for when no filters are set initially)
-    useEffect(() => {
-        if (Object.keys(filters).length === 0) {
-            fetchBoxes();
-        }
-    }, []); // Run once on mount
+    }, [fetchBoxes]);
 
     const contextValue = {
         boxes,
@@ -171,6 +187,14 @@ export const BoxProvider = ({ children }) => {
         addBox,
         filters,
         setFilters,
+        clearFiltersAndRefresh: () => {
+            console.log('BoxContext: Clearing filters and refreshing...');
+            // Reset filters to empty state
+            setFilters({});
+            // Force immediate refresh
+            setLoading(true);
+            setError(null);
+        },
         refreshAll: () => {
             fetchBoxes();
             fetchFeaturedBoxes();

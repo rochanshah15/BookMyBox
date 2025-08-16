@@ -78,7 +78,7 @@ const BoxDetails = () => {
             setError(null); // Clear previous errors
             try {
                 // Fetch box details from the backend using the imported 'api' (Axios instance)
-                const response = await api.get(`/boxes/boxes/${id}/`); // Adjust this endpoint to your actual backend API
+                const response = await api.get(`/boxes/${id}/`); // Adjust this endpoint to your actual backend API
                 const fetchedBox = response.data;
 
                 // Ensure rating is a number (backend might send it as string or number)

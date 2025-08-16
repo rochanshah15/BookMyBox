@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Grid, List, Star, MapPin, Users, Map } from 'lucide-react';
+import { Search, Filter, Grid, List, Star, MapPin, Users, Map, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBox } from '../context/BoxContext';
 import { useDebounce } from '../hooks/useDebounce';
@@ -13,52 +13,61 @@ const BoxListings = () => {
     const [sortBy, setSortBy] = useState('rating');
     const [showFilters, setShowFilters] = useState(false);
     const [showMap, setShowMap] = useState(false);
-
-    // --- FIX 1: Simplified price filter state for clarity ---
+    
     const [localFilters, setLocalFilters] = useState({
         sport: '',
         location: '',
-        maxPrice: 1000, // Now a single value, not an array
+        priceRange: [0, 5000],
         rating: 0
     });
 
-    const { boxes, loading, error, setFilters } = useBox();
+    const { boxes, loading, error, setFilters, clearFiltersAndRefresh } = useBox();
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-    // --- FIX 2: Stabilized useEffect to prevent infinite loops ---
-    // By converting the filters object to a string, we create a stable primitive
-    // value for the dependency array. This prevents re-renders.
-    const filtersString = JSON.stringify(localFilters);
-
     useEffect(() => {
+        // Allow search terms of any length including single characters
         const apiFilters = {
             search: debouncedSearchTerm,
             sport: localFilters.sport,
             location: localFilters.location,
-            min_price: 0,
-            max_price: localFilters.maxPrice, // Use the simplified state
+            min_price: localFilters.priceRange[0],
+            max_price: localFilters.priceRange[1],
             min_rating: localFilters.rating
         };
         
-        console.log("Filters sent to context:", apiFilters);
+        console.log("BoxListings: Sending filters to context:", apiFilters);
+        console.log("BoxListings: searchTerm:", searchTerm, "debouncedSearchTerm:", debouncedSearchTerm);
         setFilters(apiFilters);
-        // The setFilters function from context is stable and does not need to be a dependency.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearchTerm, filtersString]);
+    }, [debouncedSearchTerm, localFilters, setFilters]);
 
-    const handleFilterChange = (key, value) => {
-        setLocalFilters(prev => ({ ...prev, [key]: value }));
-    };
-    
-    // Client-side sorting is efficient for smaller, filtered datasets
+    const clearAllFilters = useCallback(() => {
+        console.log("BoxListings: Clearing all filters");
+        setSearchTerm('');
+        setLocalFilters({
+            sport: '',
+            location: '',
+            priceRange: [0, 5000],
+            rating: 0
+        });
+        clearFiltersAndRefresh();
+    }, [clearFiltersAndRefresh]);
+
+    const handleFilterChange = useCallback((key, value) => {
+        setLocalFilters(prev => ({
+            ...prev,
+            [key]: value
+        }));
+    }, []);
+
+    // Sorting is done on the client-side after fetching
     const sortedBoxes = [...boxes].sort((a, b) => {
         switch (sortBy) {
             case 'price-low':
-                return (a.price || 0) - (b.price || 0);
+                return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
             case 'price-high':
-                return (b.price || 0) - (a.price || 0);
+                return (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0);
             case 'rating':
-                return (b.rating || 0) - (a.rating || 0);
+                return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
             case 'name':
                 return a.name.localeCompare(b.name);
             default:
@@ -66,8 +75,18 @@ const BoxListings = () => {
         }
     });
 
+    console.log("BoxListings: boxes from context:", boxes.length, "boxes");
+    console.log("BoxListings: sortedBoxes:", sortedBoxes.length, "boxes");
+    console.log("BoxListings: loading:", loading, "error:", error);
+    console.log("BoxListings: current filters:", localFilters);
+    console.log("BoxListings: current searchTerm:", searchTerm);
+
     const sports = ['Cricket', 'Football', 'Badminton', 'Padel', 'Squash', 'Basketball', 'Multisport', 'Skating', 'Cycling', 'Futsal', 'Watersports', 'Yoga', 'Archery'];
-    const locations = ['Ahmedabad', 'Kolkata', 'Goa', 'Jaipur', 'Lucknow', 'Bhopal', 'Indore', 'Chandigarh', 'Hyderabad', 'Chennai', 'Bengaluru', 'Pune', 'Delhi', 'Mumbai'];
+    const locations = [
+        'Ahmedabad', 'Kolkata', 'Goa', 'Jaipur', 'Lucknow', 'Bhopal',
+        'Indore', 'Chandigarh', 'Hyderabad', 'Chennai', 'Bengaluru',
+        'Pune', 'Delhi', 'Mumbai'
+    ];
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -95,11 +114,19 @@ const BoxListings = () => {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Search boxes, sports, or locations..."
+                                placeholder="Search by box name... (min 2 characters)"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                             />
+                            {searchTerm && (
+                                <button
+                                    onClick={clearAllFilters}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X size={20} />
+                                </button>
+                            )}
                         </div>
 
                         {/* Controls */}
@@ -182,13 +209,13 @@ const BoxListings = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Max Price: ₹{localFilters.maxPrice}
+                                        Price Range: ₹{localFilters.priceRange[0]} - ₹{localFilters.priceRange[1]}
                                     </label>
                                     <input
                                         type="range"
-                                        min="0" max="1000" step="50"
-                                        value={localFilters.maxPrice}
-                                        onChange={(e) => handleFilterChange('maxPrice', parseInt(e.target.value, 10))}
+                                        min="0" max="5000" step="100"
+                                        value={localFilters.priceRange[1]}
+                                        onChange={(e) => handleFilterChange('priceRange', [0, parseInt(e.target.value)])}
                                         className="w-full"
                                     />
                                 </div>
@@ -205,6 +232,16 @@ const BoxListings = () => {
                                         <option value="4.5">4.5+ Stars</option>
                                     </select>
                                 </div>
+                            </div>
+                            
+                            {/* Clear filters button in panel */}
+                            <div className="mt-4 flex justify-end">
+                                <button
+                                    onClick={clearAllFilters}
+                                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Clear All Filters
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -301,11 +338,7 @@ const BoxListings = () => {
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">No boxes found</h3>
                         <p className="text-gray-600 mb-4">Try adjusting your search criteria or filters</p>
                         <button
-                            onClick={() => {
-                                setSearchTerm('');
-                                setLocalFilters({ sport: '', location: '', maxPrice: 1000, rating: 0 });
-                                setShowFilters(false);
-                            }}
+                            onClick={clearAllFilters}
                             className="btn-primary"
                         >
                             Clear Filters

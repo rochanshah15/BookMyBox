@@ -13,6 +13,23 @@ from .models import Box, Review
 from .serializers import BoxSerializer, ReviewSerializer, OwnerBoxSerializer
 from .filters import BoxFilter
 
+
+class MinLengthSearchFilter(drf_filters.SearchFilter):
+    """Custom search filter that handles searches of any length"""
+    
+    def filter_queryset(self, request, queryset, view):
+        search_terms = self.get_search_terms(request)
+        if not search_terms:
+            return queryset
+        
+        # Join all search terms and check length
+        search_string = ' '.join(search_terms).strip()
+        if not search_string:
+            return queryset
+            
+        # Allow searches of any length - remove the 2 character restriction
+        return super().filter_queryset(request, queryset, view)
+
 # Haversine function remains the same
 def haversine_distance(lat1, lon1, lat2, lon2):
     R = 6371
@@ -28,13 +45,18 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
     This viewset provides PUBLIC read-only access to approved boxes.
     It handles listing, retrieving, searching, and nearby functionality.
     """
-    queryset = Box.objects.filter(status='approved').order_by('-created_at')
+    queryset = Box.objects.filter(status='approved').order_by('id')
     serializer_class = BoxSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, MinLengthSearchFilter, drf_filters.OrderingFilter]
     filterset_class = BoxFilter
-    search_fields = ['name', 'sport', 'location', 'description', 'amenities']
-    ordering_fields = ['price', 'rating', 'name']
+    search_fields = ['name']  # Only search by name field
+    ordering_fields = ['price', 'rating', 'name', 'id']
+    ordering = ['id']  # Default ordering
+    
+    def get_queryset(self):
+        """Ensure we always return only approved boxes with stable ordering"""
+        return Box.objects.filter(status='approved').order_by('id')
 
     # --- ADDED THE TWO MISSING ACTIONS BELOW ---
 

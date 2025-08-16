@@ -10,6 +10,7 @@ const TestAPI = () => {
     const testFetch = async () => {
       console.log('TestAPI: Starting fetch...');
       try {
+        console.log('TestAPI: Making API call to /boxes/boxes/');
         const response = await api.get('/boxes/boxes/');
         console.log('TestAPI: Response received:', response.data);
         setBoxes(response.data.results || []);
@@ -24,18 +25,20 @@ const TestAPI = () => {
     testFetch();
   }, []);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <div style={{ padding: '20px' }}>Loading...</div>;
+  if (error) return <div style={{ padding: '20px', color: 'red' }}>Error: {error}</div>;
 
   return (
     <div style={{ padding: '20px' }}>
       <h1>Test API - Boxes Count: {boxes.length}</h1>
-      {boxes.slice(0, 3).map(box => (
+      <p>This page tests direct API calls without BoxContext</p>
+      {boxes.slice(0, 5).map(box => (
         <div key={box.id} style={{ border: '1px solid #ccc', margin: '10px', padding: '10px' }}>
           <h3>{box.name}</h3>
           <p>Sport: {box.sport}</p>
           <p>Location: {box.location}</p>
           <p>Price: ₹{box.price}/hr</p>
+          <p>Status: {box.status || 'No status'}</p>
         </div>
       ))}
     </div>
