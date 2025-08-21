@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Grid, List, Star, MapPin, Users, Map } from 'lucide-react';
+import { Search, Filter, Grid, List, Star, MapPin, Users, Map, X, ArrowRight, Sparkles, Target, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBox } from '../context/BoxContext';
 import { useDebounce } from '../hooks/useDebounce';
 import Loader from '../components/common/Loader';
-import NearbyBoxesMap from '../components/maps/NearbyBoxesMap';
+import Chatbot from '../components/common/Chatbot';
+import BoxListingsMap from '../components/maps/BoxListingsMap';
+import { animations, gradientText, shadows, useScrollAnimation, glassMorphism } from '../utils/animations';
+import { EnhancedButton, EnhancedCard, EnhancedInput, EnhancedBadge } from '../components/common/EnhancedComponents';
 
 const BoxListings = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -13,46 +16,56 @@ const BoxListings = () => {
     const [sortBy, setSortBy] = useState('rating');
     const [showFilters, setShowFilters] = useState(false);
     const [showMap, setShowMap] = useState(false);
+    
     const [localFilters, setLocalFilters] = useState({
-        sport: '',           // Corresponds to 'sport' in the Box model
-        location: '',        // Corresponds to 'location' in the Box model
-        priceRange: [0, 1000], // Corresponds to 'price' (min/max)
-        rating: 0            // Corresponds to 'rating' (min)
+        sport: '',
+        location: '',
+        priceRange: [0, 5000],
+        rating: 0
     });
 
-    const { boxes, loading, error, setFilters } = useBox();
+    const { boxes, loading, error, setFilters, clearFiltersAndRefresh } = useBox();
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     useEffect(() => {
-        // Map local state filters to backend API filter names (which should now match model fields or filter names)
         const apiFilters = {
             search: debouncedSearchTerm,
-            sport: localFilters.sport,       // CHANGED from sport_type to sport
-            location: localFilters.location, // CHANGED from location_name to location
+            sport: localFilters.sport,
+            location: localFilters.location,
             min_price: localFilters.priceRange[0],
             max_price: localFilters.priceRange[1],
             min_rating: localFilters.rating
         };
-        console.log("Filters sent to context (BoxListings):", apiFilters); // Added for debugging
+        
         setFilters(apiFilters);
     }, [debouncedSearchTerm, localFilters, setFilters]);
 
-    const handleFilterChange = (key, value) => {
+    const clearAllFilters = useCallback(() => {
+        setSearchTerm('');
+        setLocalFilters({
+            sport: '',
+            location: '',
+            priceRange: [0, 5000],
+            rating: 0
+        });
+        clearFiltersAndRefresh();
+    }, [clearFiltersAndRefresh]);
+
+    const handleFilterChange = useCallback((key, value) => {
         setLocalFilters(prev => ({
             ...prev,
             [key]: value
         }));
-    };
+    }, []);
 
-    // Sorting is done on the client-side after fetching
     const sortedBoxes = [...boxes].sort((a, b) => {
         switch (sortBy) {
             case 'price-low':
-                return (a.price || 0) - (b.price || 0);
+                return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
             case 'price-high':
-                return (b.price || 0) - (a.price || 0);
+                return (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0);
             case 'rating':
-                return (b.rating || 0) - (a.rating || 0);
+                return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
             case 'name':
                 return a.name.localeCompare(b.name);
             default:
@@ -67,109 +80,323 @@ const BoxListings = () => {
         'Pune', 'Delhi', 'Mumbai'
     ];
 
-    return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="container-max section-padding">
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8"
-                >
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Browse Sports Boxes</h1>
-                    <p className="text-gray-600">Find the perfect sports facility for your game</p>
-                </motion.div>
+    const BoxCard = ({ box, index }) => (
+        <motion.div
+            variants={animations.staggerItem}
+            className="group"
+        >
+            <EnhancedCard hover className="overflow-hidden p-0 h-full">
+                <div className="relative overflow-hidden">
+                    <img
+                        src={box.image}
+                        alt={box.name}
+                        className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    
+                    <motion.div 
+                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl flex items-center space-x-1"
+                        whileHover={{ scale: 1.05 }}
+                    >
+                        <Star size={16} className="text-yellow-500 fill-current" />
+                        <span className="text-sm font-bold text-gray-900">{box.rating}</span>
+                    </motion.div>
 
-                {/* Search and Controls */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8"
-                >
-                    <div className="flex flex-col lg:flex-row gap-4 items-center">
-                        {/* Search */}
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search boxes, sports, or locations..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            />
+                    <div className="absolute top-4 left-4">
+                        <EnhancedBadge variant="primary" size="sm">
+                            {box.sport || 'Multi-sport'}
+                        </EnhancedBadge>
+                    </div>
+
+                    {/* Hover overlay */}
+                    <motion.div 
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        initial={{ scale: 0.8 }}
+                        whileHover={{ scale: 1 }}
+                    >
+                        <Link to={`/boxes/${box.id}`}>
+                            <EnhancedButton
+                                variant="secondary"
+                                size="sm"
+                                icon={<ArrowRight size={16} />}
+                                className="bg-white/90 text-gray-900 backdrop-blur-sm"
+                            >
+                                View Details
+                            </EnhancedButton>
+                        </Link>
+                    </motion.div>
+                </div>
+                
+                <div className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {box.name}
+                        </h3>
+                        <span className={`text-xl font-bold ${gradientText}`}>
+                            ₹{box.price}/hr
+                        </span>
+                    </div>
+                    
+                    <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                            <MapPin size={16} className="mr-2 text-blue-500" />
+                            <span className="text-sm">{box.location}</span>
                         </div>
-
-                        {/* Controls */}
-                        <div className="flex items-center space-x-4">
-                            {/* Map Toggle */}
-                            <button
-                                onClick={() => setShowMap(true)}
-                                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                            >
-                                <Map size={20} />
-                                <span>View on Map</span>
-                            </button>
-
-                            {/* Filter Toggle */}
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
-                                    showFilters
-                                        ? 'bg-primary-500 text-white border-primary-500'
-                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                }`}
-                            >
-                                <Filter size={20} />
-                                <span>Filters</span>
-                            </button>
-
-                            {/* Sort */}
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                            >
-                                <option value="rating">Sort by Rating</option>
-                                <option value="price-low">Price: Low to High</option>
-                                <option value="price-high">Price: High to Low</option>
-                                <option value="name">Name: A to Z</option>
-                            </select>
-
-                            {/* View Mode */}
-                            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`p-2 ${viewMode === 'grid' ? 'bg-primary-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                >
-                                    <Grid size={20} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-2 ${viewMode === 'list' ? 'bg-primary-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                >
-                                    <List size={20} />
-                                </button>
-                            </div>
+                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                            <Users size={16} className="mr-2 text-green-500" />
+                            <span className="text-sm">Up to {box.capacity} players</span>
+                        </div>
+                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                            <Clock size={16} className="mr-2 text-purple-500" />
+                            <span className="text-sm">Available today</span>
                         </div>
                     </div>
 
-                    {/* Filters Panel */}
-                    {showFilters && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="mt-6 pt-6 border-t border-gray-200"
+                    <Link to={`/boxes/${box.id}`}>
+                        <EnhancedButton
+                            className="w-full"
+                            size="md"
+                            icon={<Target size={16} />}
                         >
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            Book Now
+                        </EnhancedButton>
+                    </Link>
+                </div>
+            </EnhancedCard>
+        </motion.div>
+    );
+
+    const BoxListCard = ({ box, index }) => (
+        <motion.div
+            variants={animations.staggerItem}
+            className="group"
+        >
+            <EnhancedCard hover className="overflow-hidden p-0 h-full">
+                <div className="flex flex-col sm:flex-row">
+                    {/* Image Section */}
+                    <div className="relative sm:w-80 sm:flex-shrink-0 overflow-hidden">
+                        <img
+                            src={box.image}
+                            alt={box.name}
+                            className="w-full h-48 sm:h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        
+                        <motion.div 
+                            className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-xl flex items-center space-x-1"
+                            whileHover={{ scale: 1.05 }}
+                        >
+                            <Star size={16} className="text-yellow-500 fill-current" />
+                            <span className="text-sm font-bold text-gray-900">{box.rating}</span>
+                        </motion.div>
+
+                        <div className="absolute top-4 left-4">
+                            <EnhancedBadge variant="primary" size="sm">
+                                {box.sport || 'Multi-sport'}
+                            </EnhancedBadge>
+                        </div>
+                    </div>
+                    
+                    {/* Content Section */}
+                    <div className="flex-1 p-6 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1 mr-4">
+                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-2">
+                                        {box.name}
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2">
+                                        Experience premium sports facilities with state-of-the-art equipment and professional maintenance.
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <span className={`text-2xl font-bold ${gradientText}`}>
+                                        ₹{box.price}
+                                    </span>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">per hour</div>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                                <div className="flex items-center text-gray-600 dark:text-gray-400">
+                                    <MapPin size={18} className="mr-3 text-blue-500" />
+                                    <span className="text-sm font-medium">{box.location}</span>
+                                </div>
+                                <div className="flex items-center text-gray-600 dark:text-gray-400">
+                                    <Users size={18} className="mr-3 text-green-500" />
+                                    <span className="text-sm font-medium">Up to {box.capacity} players</span>
+                                </div>
+                                <div className="flex items-center text-gray-600 dark:text-gray-400">
+                                    <Clock size={18} className="mr-3 text-purple-500" />
+                                    <span className="text-sm font-medium">Available today</span>
+                                </div>
+                                <div className="flex items-center text-gray-600 dark:text-gray-400">
+                                    <Target size={18} className="mr-3 text-orange-500" />
+                                    <span className="text-sm font-medium">{box.sport || 'Multi-sport'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <Link to={`/boxes/${box.id}`} className="flex-1">
+                                <EnhancedButton
+                                    variant="secondary"
+                                    className="w-full"
+                                    size="md"
+                                    icon={<ArrowRight size={16} />}
+                                >
+                                    View Details
+                                </EnhancedButton>
+                            </Link>
+                            <Link to={`/boxes/${box.id}`} className="flex-1">
+                                <EnhancedButton
+                                    className="w-full"
+                                    size="md"
+                                    icon={<Target size={16} />}
+                                >
+                                    Book Now
+                                </EnhancedButton>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </EnhancedCard>
+        </motion.div>
+    );
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900">
+            {/* Enhanced Header */}
+            <motion.section 
+                className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
+                {...animations.pageTransition}
+            >
+                {/* Background Elements */}
+                <motion.div 
+                    className="absolute top-10 right-10 w-64 h-64 bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-full blur-3xl"
+                    {...animations.cardFloat}
+                />
+
+                <div className="max-w-7xl mx-auto">
+                    <motion.div
+                        {...animations.slideInUp}
+                        {...useScrollAnimation()}
+                        className="text-center mb-12"
+                    >
+                        <h1 className={`text-4xl lg:text-5xl font-bold mb-4 ${gradientText}`}>
+                            Discover Sports Boxes
+                        </h1>
+                        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                            Find and book the perfect sports facility for your game from our curated collection of premium venues
+                        </p>
+                    </motion.div>
+
+                    {/* Enhanced Search and Controls */}
+                    <motion.div 
+                        className="max-w-4xl mx-auto"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.6 }}
+                    >
+                        <EnhancedCard glass className="p-6 backdrop-blur-xl border-0">
+                            <div className="flex flex-col lg:flex-row gap-4 items-center">
+                                {/* Enhanced Search */}
+                                <div className="flex-1 w-full">
+                                    <EnhancedInput
+                                        icon={<Search size={20} />}
+                                        placeholder="Search by name, sport, or location..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full text-lg"
+                                    />
+                                </div>
+
+                                {/* Enhanced Controls */}
+                                <div className="flex gap-3 w-full lg:w-auto">
+                                    <EnhancedButton
+                                        variant={showFilters ? 'primary' : 'secondary'}
+                                        onClick={() => setShowFilters(!showFilters)}
+                                        icon={<Filter size={18} />}
+                                        className="flex-1 lg:flex-none"
+                                    >
+                                        Filters
+                                    </EnhancedButton>
+
+                                    <EnhancedButton
+                                        variant={showMap ? 'primary' : 'secondary'}
+                                        onClick={() => setShowMap(!showMap)}
+                                        icon={<Map size={18} />}
+                                        className="flex-1 lg:flex-none"
+                                    >
+                                        {showMap ? 'Close Map' : 'View Map'}
+                                    </EnhancedButton>
+
+                                    <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+                                        <motion.button
+                                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-gray-600 shadow-md' : ''}`}
+                                            onClick={() => setViewMode('grid')}
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                        >
+                                            <Grid size={18} className={viewMode === 'grid' ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'} />
+                                        </motion.button>
+                                        <motion.button
+                                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-gray-600 shadow-md' : ''}`}
+                                            onClick={() => setViewMode('list')}
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                        >
+                                            <List size={18} className={viewMode === 'list' ? 'text-blue-600' : 'text-gray-600 dark:text-gray-400'} />
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            </div>
+                        </EnhancedCard>
+                    </motion.div>
+                </div>
+            </motion.section>
+
+            {/* Enhanced Filters Panel */}
+            {showFilters && (
+                <motion.section 
+                    className="px-4 sm:px-6 lg:px-8 pb-8"
+                    {...animations.slideInUp}
+                >
+                    <div className="max-w-7xl mx-auto">
+                        <EnhancedCard glass className="p-6 backdrop-blur-xl border-0">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Filter Results
+                                </h3>
+                                <div className="flex gap-3">
+                                    <EnhancedButton
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearAllFilters}
+                                    >
+                                        Clear All
+                                    </EnhancedButton>
+                                    <motion.button
+                                        onClick={() => setShowFilters(false)}
+                                        className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                    >
+                                        <X size={20} />
+                                    </motion.button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {/* Sport Filter */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Sport</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Sport
+                                    </label>
                                     <select
                                         value={localFilters.sport}
-                                        onChange={(e) => handleFilterChange('sport', e.target.value)} // 'sport' matches model field
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onChange={(e) => handleFilterChange('sport', e.target.value)}
+                                        className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                                     >
                                         <option value="">All Sports</option>
                                         {sports.map(sport => (
@@ -180,11 +407,13 @@ const BoxListings = () => {
 
                                 {/* Location Filter */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Location
+                                    </label>
                                     <select
                                         value={localFilters.location}
-                                        onChange={(e) => handleFilterChange('location', e.target.value)} // 'location' matches model field
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onChange={(e) => handleFilterChange('location', e.target.value)}
+                                        className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                                     >
                                         <option value="">All Locations</option>
                                         {locations.map(location => (
@@ -193,199 +422,164 @@ const BoxListings = () => {
                                     </select>
                                 </div>
 
-                                {/* Price Range */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Price Range: ₹{localFilters.priceRange[0]} - ₹{localFilters.priceRange[1]}
-                                    </label>
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="1000"
-                                        step="50"
-                                        value={localFilters.priceRange[1]}
-                                        onChange={(e) => handleFilterChange('priceRange', [0, parseInt(e.target.value)])}
-                                        className="w-full"
-                                    />
-                                </div>
-
                                 {/* Rating Filter */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Rating</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Minimum Rating
+                                    </label>
                                     <select
                                         value={localFilters.rating}
-                                        onChange={(e) => handleFilterChange('rating', parseFloat(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onChange={(e) => handleFilterChange('rating', Number(e.target.value))}
+                                        className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                                     >
-                                        <option value="0">Any Rating</option>
-                                        <option value="3">3+ Stars</option>
-                                        <option value="4">4+ Stars</option>
-                                        <option value="4.5">4.5+ Stars</option>
+                                        <option value={0}>Any Rating</option>
+                                        <option value={4}>4+ Stars</option>
+                                        <option value={4.5}>4.5+ Stars</option>
+                                    </select>
+                                </div>
+
+                                {/* Sort By */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Sort By
+                                    </label>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                                    >
+                                        <option value="rating">Highest Rated</option>
+                                        <option value="price-low">Price: Low to High</option>
+                                        <option value="price-high">Price: High to Low</option>
+                                        <option value="name">Name A-Z</option>
                                     </select>
                                 </div>
                             </div>
+                        </EnhancedCard>
+                    </div>
+                </motion.section>
+            )}
+
+            {/* Enhanced Map View - Modal Style like Nearby Boxes */}
+            <BoxListingsMap 
+                isOpen={showMap} 
+                onClose={() => setShowMap(false)} 
+                boxes={sortedBoxes} 
+            />
+
+            {/* Enhanced Results Section */}
+            <section className="px-4 sm:px-6 lg:px-8 pb-20">
+                <div className="max-w-7xl mx-auto">
+                    {/* Results Header */}
+                    <motion.div 
+                        className="flex items-center justify-between mb-8"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {sortedBoxes.length} Sports Boxes Found
+                            </h2>
+                            <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                {searchTerm && `Results for "${searchTerm}"`}
+                            </p>
+                        </div>
+                        
+                        {(searchTerm || localFilters.sport || localFilters.location || localFilters.rating > 0) && (
+                            <EnhancedButton
+                                variant="ghost"
+                                onClick={clearAllFilters}
+                                icon={<X size={16} />}
+                            >
+                                Clear Filters
+                            </EnhancedButton>
+                        )}
+                    </motion.div>
+
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="flex justify-center py-16">
+                            <Loader text="Finding perfect sports boxes..." />
+                        </div>
+                    )}
+
+                    {/* Error State */}
+                    {error && (
+                        <motion.div 
+                            className="text-center py-16"
+                            {...animations.slideInUp}
+                        >
+                            <EnhancedCard className="max-w-md mx-auto p-8 text-center">
+                                <div className="text-red-500 mb-4">
+                                    <X size={48} className="mx-auto" />
+                                </div>
+                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                    Oops! Something went wrong
+                                </h3>
+                                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                    {error}
+                                </p>
+                                <EnhancedButton onClick={() => window.location.reload()}>
+                                    Try Again
+                                </EnhancedButton>
+                            </EnhancedCard>
                         </motion.div>
                     )}
-                </motion.div>
 
-                {/* Results */}
-                <div className="mb-4 flex items-center justify-between">
-                    <p className="text-gray-600">
-                        {loading ? 'Searching...' : `${sortedBoxes.length} boxes found`}
-                    </p>
-                </div>
-
-                {/* Loading State */}
-                {loading && (
-                    <div className="flex justify-center py-12">
-                        <Loader text="Loading boxes..." />
-                    </div>
-                )}
-
-                {/* Error State */}
-                {error && (
-                    <div className="text-center py-12 text-red-600">
-                        <p>{error}</p>
-                    </div>
-                )}
-
-                {/* Boxes Grid/List */}
-                {!loading && !error && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className={
-                            viewMode === 'grid'
-                                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-                                : 'space-y-6'
-                        }
-                    >
-                        {sortedBoxes.map((box, index) => (
-                            <motion.div
-                                key={box.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className={`card hover:shadow-xl transition-all duration-300 ${
-                                    viewMode === 'list' ? 'flex flex-col md:flex-row' : ''
-                                }`}
-                            >
-                                <div className={`relative ${viewMode === 'list' ? 'md:w-1/3' : ''}`}>
-                                    <img
-                                        src={box.image}
-                                        alt={box.name}
-                                        className={`w-full object-cover ${
-                                            viewMode === 'list' ? 'h-48 md:h-full' : 'h-48'
-                                        }`}
-                                    />
-                                    <div className="absolute top-4 right-4 bg-white px-2 py-1 rounded-lg flex items-center space-x-1">
-                                        <Star size={16} className="text-yellow-500 fill-current" />
-                                        <span className="text-sm font-medium">{box.rating ? parseFloat(box.rating).toFixed(1) : 'N/A'}</span>
-                                    </div>
-                                </div>
-
-                                <div className={`p-6 ${viewMode === 'list' ? 'md:w-2/3 flex flex-col justify-between' : ''}`}>
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-lg font-semibold text-gray-900">{box.name}</h3>
-                                            <span className="text-primary-600 font-bold">₹{box.price}/hr</span>
-                                        </div>
-
-                                        <div className="flex items-center text-gray-600 mb-2">
-                                            <MapPin size={16} className="mr-1" />
-                                            <span className="text-sm">{box.location}</span>
-                                        </div>
-
-                                        <div className="flex items-center text-gray-600 mb-3">
-                                            <Users size={16} className="mr-1" />
-                                            <span className="text-sm">Up to {box.capacity} players</span>
-                                        </div>
-
-                                        {/* Sports Available */}
-                                        <div className="mb-3">
-                                            <p className="text-sm text-gray-600 mb-1">Sport:</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                <span
-                                                    className="px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded-full font-medium"
-                                                >
-                                                    {box.sport}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                                            {box.description}
+                    {/* Enhanced Results Grid */}
+                    {!loading && !error && (
+                        <>
+                            {sortedBoxes.length === 0 ? (
+                                <motion.div 
+                                    className="text-center py-16"
+                                    {...animations.slideInUp}
+                                >
+                                    <EnhancedCard className="max-w-md mx-auto p-8 text-center">
+                                        <motion.div 
+                                            className="text-gray-400 mb-4"
+                                            {...animations.iconBounce}
+                                        >
+                                            <Sparkles size={48} className="mx-auto" />
+                                        </motion.div>
+                                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                                            No boxes found
+                                        </h3>
+                                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                            Try adjusting your search criteria or clear the filters
                                         </p>
+                                        <EnhancedButton onClick={clearAllFilters}>
+                                            Clear All Filters
+                                        </EnhancedButton>
+                                    </EnhancedCard>
+                                </motion.div>
+                            ) : (
+                                <motion.div 
+                                    className={`grid gap-8 ${
+                                        viewMode === 'grid' 
+                                            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+                                            : 'grid-cols-1'
+                                    }`}
+                                    variants={animations.staggerContainer}
+                                    initial="initial"
+                                    animate="animate"
+                                >
+                                    {sortedBoxes.map((box, index) => 
+                                        viewMode === 'grid' ? (
+                                            <BoxCard key={box.id} box={box} index={index} />
+                                        ) : (
+                                            <BoxListCard key={box.id} box={box} index={index} />
+                                        )
+                                    )}
+                                </motion.div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </section>
 
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                            {(box.amenities || []).slice(0, 3).map((amenity, idx) => (
-                                                <span
-                                                    key={idx}
-                                                    className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                                                >
-                                                    {amenity}
-                                                </span>
-                                            ))}
-                                            {(box.amenities || []).length > 3 && (
-                                                <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                                                    +{(box.amenities || []).length - 3} more
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <Link
-                                        to={`/boxes/${box.id}`}
-                                        className="btn-primary text-center block"
-                                    >
-                                        View Details
-                                    </Link>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </motion.div>
-                )}
-
-                {/* No Results */}
-                {!loading && !error && sortedBoxes.length === 0 && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-center py-12"
-                    >
-                        <div className="text-gray-400 mb-4">
-                            <Search size={64} className="mx-auto" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No boxes found</h3>
-                        <p className="text-gray-600 mb-4">
-                            Try adjusting your search criteria or filters
-                        </p>
-                        <button
-                            onClick={() => {
-                                setSearchTerm('');
-                                setLocalFilters({
-                                    sport: '',
-                                    location: '',
-                                    priceRange: [0, 1000],
-                                    rating: 0
-                                });
-                                setShowFilters(false);
-                            }}
-                            className="btn-primary"
-                        >
-                            Clear Filters
-                        </button>
-                    </motion.div>
-                )}
-            </div>
-
-            {/* Nearby Boxes Map */}
-            <NearbyBoxesMap
-                isOpen={showMap}
-                onClose={() => setShowMap(false)}
-                boxes={boxes}
-            />
+            {/* Chatbot Component */}
+            <Chatbot />
         </div>
     );
 };

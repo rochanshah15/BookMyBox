@@ -14,6 +14,10 @@ urlpatterns = [
     path('logout/', views.logout, name='logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
+    # Google OAuth endpoints
+    path('google-auth/', views.google_auth, name='google_auth'),
+    path('complete-onboarding/', views.complete_onboarding, name='complete_onboarding'),
+    
     # Profile endpoints
     path('profile/', views.profile, name='profile'),
     path('profile/update/', views.update_profile, name='update_profile'),

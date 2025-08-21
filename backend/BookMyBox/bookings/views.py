@@ -1,5 +1,4 @@
 # bookings/views.py
-
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -9,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
 from django.shortcuts import get_object_or_404
 from datetime import datetime, timedelta, time, date
+from django.conf import settings
 
 from .models import Booking
 from .serializers import BookingSerializer
@@ -128,6 +128,64 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.save()
         serializer = self.get_serializer(booking) 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def booked_slots(self, request):
+        """
+        Get booked time slots for a specific box and date
+        Query params: box_id, date (YYYY-MM-DD format)
+        """
+        box_id = request.query_params.get('box_id')
+        date_str = request.query_params.get('date')
+        
+        if not box_id or not date_str:
+            return Response({
+                'error': 'box_id and date parameters are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Validate date format
+            datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            return Response({
+                'error': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            box = Box.objects.get(pk=box_id)
+        except Box.DoesNotExist:
+            return Response({
+                'error': 'Box not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get all confirmed bookings for this box and date
+        bookings = Booking.objects.filter(
+            box=box,
+            date=date_str,
+            booking_status='Confirmed'
+        ).values('start_time', 'end_time', 'duration')
+        
+        # Convert to list of booked time slots
+        booked_slots = []
+        for booking in bookings:
+            start_time = booking['start_time']
+            duration = booking['duration']
+            
+            # Generate all time slots covered by this booking
+            start_hour = int(start_time.split(':')[0])
+            start_minute = int(start_time.split(':')[1])
+            
+            for i in range(duration):
+                slot_hour = start_hour + i
+                if slot_hour < 24:  # Don't go past midnight
+                    slot_time = f"{slot_hour:02d}:{start_minute:02d}"
+                    booked_slots.append(slot_time)
+        
+        return Response({
+            'box_id': box_id,
+            'date': date_str,
+            'booked_slots': booked_slots
+        }, status=status.HTTP_200_OK)
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:

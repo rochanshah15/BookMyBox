@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-93&ju_2g6_s5j&r!rb7&lllh#0x)to-b6dz=2f@!g#@y4hf0g2'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-93&ju_2g6_s5j&r!rb7&lllh#0x)to-b6dz=2f@!g#@y4hf0g2')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = []
 
@@ -32,6 +36,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,7 +53,7 @@ INSTALLED_APPS = [
     'boxes',
     'bookings',
     'user_dashboard',
-    'owner_dashboard',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -67,7 +72,7 @@ ROOT_URLCONF = 'BookMyBox.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -146,7 +151,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 100,  # Increased to show all boxes without pagination issues
 
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 
@@ -188,6 +193,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React development server
     "http://127.0.0.1:5173",
+    # "http://localhost:5174",  # React development server (alternate port)
+    # "http://127.0.0.1:5174",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True # For development only, set to False in production
@@ -237,3 +244,45 @@ STRIPE_SECRET_KEY = 'sk_test_YOUR_STRIPE_SECRET_KEY' # Replace with your actual 
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# your_project/settings.py
+
+JAZZMIN_SETTINGS = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    "site_title": "My Project Admin",
+
+    # Title on the login screen (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_header": "My Project",
+
+    # Title on the brand (19 chars max) (defaults to current_admin_site.site_header if absent or None)
+    "site_brand": "My Project",
+
+    # Logo to use for your site, must be present in static files, used for login form
+    # "site_logo": "images/logo.png", # Example path
+
+    # Welcome text on the login screen
+    "welcome_sign": "Welcome to the My Project Admin",
+
+    # Copyright on the footer
+    "copyright": "My Project Ltd",
+
+    # The model admin to search from the search bar, search model admin has to be defined in your project
+    "search_model": "auth.User",
+    
+    # Links to put along the top menu
+    "topmenu_links": [
+        # Url that gets reversed (Permissions can be added)
+        {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
+        # model admin to link to (Permissions checked against model)
+        {"model": "auth.User"},
+        # App with dropdown menu to all its models pages (Permissions checked against models)
+        {"app": "books"},
+    ],
+   "theme": "darkly", # e.g., "cerulean", "flatly", "sandstone", "united"
+    "theme": "flatly",
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+    },
+}

@@ -18,6 +18,7 @@ from .serializers import (
     PasswordChangeSerializer,
     CustomTokenObtainPairSerializer, # <--- CORRECTED: This now matches the name in serializers.py
 )
+from .google_auth import GoogleAuthSerializer
 
 # --- Simple JWT Custom Login View ---
 # This is the PRIMARY view for user login and token generation.
@@ -29,6 +30,97 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     access and refresh JWTs, along with serialized user data (including role).
     """
     serializer_class = CustomTokenObtainPairSerializer # Use your custom serializer
+
+
+# --- Google OAuth Login/Signup Endpoint ---
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def google_auth(request):
+    """
+    Handles Google OAuth authentication.
+    Creates new user or logs in existing user.
+    """
+    serializer = GoogleAuthSerializer(data=request.data)
+    if serializer.is_valid():
+        result = serializer.to_representation(serializer.validated_data)
+        
+        if result.get('is_new_user'):
+            return Response({
+                'success': True,
+                'message': 'Account created successfully with Google',
+                'user': result['user'],
+                'tokens': result['tokens'],
+                'is_new_user': True,
+                'needs_onboarding': result['needs_onboarding']
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                'success': True,
+                'message': 'Logged in successfully with Google',
+                'user': result['user'],
+                'tokens': result['tokens'],
+                'is_new_user': False,
+                'needs_onboarding': result['needs_onboarding']
+            }, status=status.HTTP_200_OK)
+    
+    return Response({
+        'success': False,
+        'errors': serializer.errors
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- Onboarding Completion Endpoint ---
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_onboarding(request):
+    """
+    Completes user onboarding by collecting missing required fields
+    """
+    user = request.user
+    data = request.data
+    
+    # Validate required fields based on role
+    errors = {}
+    
+    if 'phone' in data:
+        phone = data['phone']
+        if phone:
+            digits_only = ''.join(filter(str.isdigit, phone))
+            if len(digits_only) != 10:
+                errors['phone'] = 'Phone number must be 10 digits'
+            else:
+                user.phone = phone
+    
+    if 'location' in data and data['location']:
+        user.location = data['location']
+    else:
+        errors['location'] = 'Location is required'
+    
+    if 'role' in data:
+        if data['role'] in ['user', 'owner']:
+            user.role = data['role']
+        else:
+            errors['role'] = 'Invalid role'
+    
+    if user.role == 'owner':
+        if 'business_name' in data and data['business_name']:
+            user.business_name = data['business_name']
+        else:
+            errors['business_name'] = 'Business name is required for owners'
+    
+    if errors:
+        return Response({
+            'success': False,
+            'errors': errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    user.save()
+    
+    return Response({
+        'success': True,
+        'message': 'Onboarding completed successfully',
+        'user': UserSerializer(user).data
+    }, status=status.HTTP_200_OK)
 
 
 # --- User Registration Endpoint ---

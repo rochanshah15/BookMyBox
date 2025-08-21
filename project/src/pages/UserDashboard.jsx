@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth, api } from '../api.jsx'; // Import 'api' from your Auth context file
 import { useBooking } from '../context/BookingContext';
 import { toast } from 'react-toastify';
@@ -15,10 +16,27 @@ import {
   XCircle,
   Info,
   Clock as ClockCounterClockwise,
+  TrendingUp,
+  Target,
+  Activity,
+  BarChart3,
+  Sparkles,
+  Star,
+  MapPin
 } from 'lucide-react';
 
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
 import { Doughnut, Line, Bar } from 'react-chartjs-2';
+import {
+  EnhancedSportDistribution,
+  BookingActivityChart,
+  PeakHoursChart,
+  MonthlySpendingChart,
+} from '../components/common/AdvancedCharts';
+import { animations, gradientText, shadows, glassMorphism, useScrollAnimation } from '../utils/animations';
+import { EnhancedButton, EnhancedCard, EnhancedBadge } from '../components/common/EnhancedComponents';
+import Badge from '../components/common/Badge';
+import GamificationStats from '../components/common/GamificationStats';
 
 
 // Register Chart.js components
@@ -42,9 +60,11 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [analyticsData, setAnalyticsData] = useState(null);
   const [achievements, setAchievements] = useState([]);
+  const [userGameStats, setUserGameStats] = useState(null);
   const [favoriteBoxes, setFavoriteBoxes] = useState([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [gamificationLoading, setGamificationLoading] = useState(true);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedBookingToCancel, setSelectedBookingToCancel] = useState(null);
@@ -70,12 +90,27 @@ const UserDashboard = () => {
     setAchievementsLoading(true);
     try {
       const response = await api.get(`/dashboard/achievements/`);
-      setAchievements(response.data);
+      setAchievements(response.data.achievements || response.data || []);
     } catch (err) {
       console.error('Error fetching achievements:', err);
       toast.error('Failed to load achievements.');
     } finally {
       setAchievementsLoading(false);
+    }
+  }, [user]);
+
+  // Fetch Gamification Stats (memoized)
+  const fetchGamificationStats = useCallback(async () => {
+    if (!user) return;
+    setGamificationLoading(true);
+    try {
+      const response = await api.get(`/dashboard/gamification-stats/`);
+      setUserGameStats(response.data);
+    } catch (err) {
+      console.error('Error fetching gamification stats:', err);
+      // Don't show error toast for this as it's optional feature
+    } finally {
+      setGamificationLoading(false);
     }
   }, [user]);
 
@@ -95,6 +130,20 @@ const UserDashboard = () => {
     }
   }, [user]);
 
+  const removeFavorite = useCallback(async (boxId) => {
+    if (!user) return;
+    
+    try {
+      await api.delete(`/dashboard/favorites/${boxId}/remove/`);
+      toast.success('Box removed from favorites successfully!');
+      // Refresh the favorites list
+      fetchFavorites();
+    } catch (err) {
+      console.error('Error removing favorite:', err);
+      toast.error('Failed to remove box from favorites.');
+    }
+  }, [user, fetchFavorites]);
+
 
   // useEffect to call all dashboard data fetches
   useEffect(() => {
@@ -102,9 +151,10 @@ const UserDashboard = () => {
       fetchBookings(user.id);
       fetchAnalytics();
       fetchAchievements();
+      fetchGamificationStats();
       fetchFavorites();
     }
-  }, [user, fetchBookings, fetchAnalytics, fetchAchievements, fetchFavorites]);
+  }, [user, fetchBookings, fetchAnalytics, fetchAchievements, fetchGamificationStats, fetchFavorites]);
 
   // useEffect for handling favorite-added event
   useEffect(() => {
@@ -298,153 +348,187 @@ const UserDashboard = () => {
   }).sort((a, b) => new Date(`${b.date}T${b.start_time}:00`) - new Date(`${a.date}T${a.start_time}:00`));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 p-6 sm:p-8 text-white">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold flex items-center">
-              <Users size={36} className="mr-3" />
-              Welcome, {user.username}!
-            </h1>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-white text-primary-700 rounded-lg shadow-md hover:bg-gray-100 transition-colors duration-200"
-            >
-              Logout
-            </button>
-          </div>
-          <p className="mt-2 text-lg opacity-90">{user.email}</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900 pt-20 overflow-x-hidden">
+      {/* Enhanced Background Elements */}
+      <motion.div 
+        className="fixed top-0 left-0 w-72 sm:w-96 h-72 sm:h-96 bg-gradient-to-r from-blue-400/10 to-purple-500/10 rounded-full blur-3xl"
+        {...animations.cardFloat}
+      />
+      <motion.div 
+        className="fixed bottom-0 right-0 w-64 sm:w-80 h-64 sm:h-80 bg-gradient-to-r from-pink-400/10 to-blue-500/10 rounded-full blur-3xl"
+        {...animations.cardFloat}
+        transition={{ delay: 1, ...animations.cardFloat.transition }}
+      />
 
-        {/* Navigation Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6 sm:px-8" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base ${
-                activeTab === 'overview'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+      <div className="relative z-10 p-4 sm:p-6 lg:p-8">
+        <motion.div 
+          className="max-w-7xl mx-auto"
+          {...animations.pageTransition}
+        >
+          <EnhancedCard className="overflow-hidden backdrop-blur-xl border-0">
+            {/* Enhanced Header */}
+            <motion.div 
+              className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 p-6 sm:p-8 text-white relative overflow-hidden"
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
             >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('bookings')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base ${
-                activeTab === 'bookings'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              <motion.div 
+                className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl"
+                {...animations.cardFloat}
+              />
+              
+              <div className="relative z-10 flex items-center justify-between">
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                >
+                  <h1 className="text-3xl lg:text-4xl font-bold flex items-center">
+                    <motion.div
+                      className="mr-4 p-3 bg-white/20 rounded-xl backdrop-blur-sm"
+                      whileHover={{ scale: 1.1, rotate: 360 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Users size={36} />
+                    </motion.div>
+                    Welcome back, {user.first_name || user.username?.split('@')[0] || 'Champion'}!
+                  </h1>
+                  <p className="mt-3 text-lg opacity-90 flex items-center">
+                    <Sparkles size={18} className="mr-2" />
+                    {user.email}
+                  </p>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                >
+                  <EnhancedButton
+                    onClick={handleLogout}
+                    variant="secondary"
+                    className="bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-sm"
+                  >
+                    Logout
+                  </EnhancedButton>
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Enhanced Navigation Tabs */}
+            <motion.div 
+              className="border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
             >
-              My Bookings
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base ${
-                activeTab === 'analytics'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('achievements')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base ${
-                activeTab === 'achievements'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Achievements
-            </button>
-            <button
-              onClick={() => setActiveTab('favorites')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base ${
-                activeTab === 'favorites'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Favorites
-            </button>
-          </nav>
-        </div>
+              <nav className="flex flex-wrap gap-1 px-4 sm:px-6 lg:px-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
+                {[
+                  { id: 'overview', label: 'Overview', icon: <BarChart3 size={18} /> },
+                  { id: 'bookings', label: 'My Bookings', icon: <Calendar size={18} /> },
+                  { id: 'analytics', label: 'Analytics', icon: <TrendingUp size={18} /> },
+                  { id: 'achievements', label: 'Achievements', icon: <Trophy size={18} /> },
+                  { id: 'favorites', label: 'Favorites', icon: <Heart size={18} /> }
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`relative flex items-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-3 sm:px-6 font-medium text-xs sm:text-sm lg:text-base transition-all duration-300 rounded-t-xl whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                    }`}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ y: 0 }}
+                  >
+                    <span className={activeTab === tab.id ? 'text-blue-600 dark:text-blue-400' : ''}>{tab.icon}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden text-xs">{tab.label.split(' ')[0]}</span>
+                    {activeTab === tab.id && (
+                      <motion.div
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600"
+                        layoutId="activeTabIndicator"
+                        transition={{ duration: 0.3 }}
+                      />
+                    )}
+                  </motion.button>
+                ))}
+              </nav>
+            </motion.div>
 
         {/* Tab Content */}
-        <div className="p-6 sm:p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-blue-50 p-6 rounded-lg shadow flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Total Bookings</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 sm:p-6 rounded-lg shadow flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-0">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400">Total Bookings</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                       {loading ? '...' : bookings.length}
                     </p>
                   </div>
-                  <Calendar size={48} className="text-blue-400" />
+                  <Calendar size={32} className="text-blue-400 sm:w-12 sm:h-12" />
                 </div>
-                <div className="bg-green-50 p-6 rounded-lg shadow flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600">This Month's Bookings</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
+                <div className="bg-green-50 dark:bg-green-900/30 p-4 sm:p-6 rounded-lg shadow flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-0">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">This Month's Bookings</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                       {analyticsLoading ? '...' : (analyticsData?.this_month_bookings || 0)}
                     </p>
                   </div>
-                  <ClockCounterClockwise size={48} className="text-green-400" />
+                  <ClockCounterClockwise size={32} className="text-green-400 sm:w-12 sm:h-12" />
                 </div>
-                <div className="bg-purple-50 p-6 rounded-lg shadow flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">Total Spent</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
+                <div className="bg-purple-50 dark:bg-purple-900/30 p-4 sm:p-6 rounded-lg shadow flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-0">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400">Total Spent</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                       {analyticsLoading ? '...' : `₹${(analyticsData?.total_spent || 0).toFixed(2)}`}
                     </p>
                   </div>
-                  <CreditCard size={48} className="text-purple-400" />
+                  <CreditCard size={32} className="text-purple-400 sm:w-12 sm:h-12" />
                 </div>
-                <div className="bg-yellow-50 p-6 rounded-lg shadow flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-yellow-600">Favorite Boxes</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 sm:p-6 rounded-lg shadow flex flex-col sm:flex-row items-center sm:justify-between gap-2 sm:gap-0">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-yellow-600 dark:text-yellow-400">Favorite Boxes</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1">
                       {favoritesLoading ? '...' : (favoriteBoxes.length || 0)}
                     </p>
                   </div>
-                  <Heart size={48} className="text-yellow-400" />
+                  <Heart size={32} className="text-yellow-400 sm:w-12 sm:h-12" />
                 </div>
               </div>
 
-              {/* Recent Activity & Favorite Sports (Doughnut Chart) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Recent Activity</h3>
+              {/* Recent Activity & Gamification Overview */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Recent Activity</h3>
                   {loading ? (
-                    <div className="text-center py-4 text-gray-500">Loading recent activity...</div>
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading recent activity...</div>
                   ) : bookings.length === 0 ? (
-                    <div className="text-center py-4 text-gray-600 bg-gray-50 rounded-lg">
-                      <p>No recent activity. <button onClick={() => navigate('/boxes')} className="text-primary-600 font-medium hover:underline">Book a session!</button></p>
+                    <div className="text-center py-4 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <p>No recent activity. <button onClick={() => navigate('/boxes')} className="text-primary-600 dark:text-primary-400 font-medium hover:underline">Book a session!</button></p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {bookings.slice(0, 4).map((booking) => (
-                        <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150">
+                        <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-150 gap-3 sm:gap-0">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white font-medium text-lg">
-                              {booking.box?.sport?.charAt(0).toUpperCase() ?? 'S'}
+                            <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white font-medium text-lg flex-shrink-0">
+                              {(booking.box?.sport || booking.box_sport)?.charAt(0).toUpperCase() ?? 'S'}
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{booking.box?.name ?? 'Unknown Box'}</p>
-                              <p className="text-sm text-gray-600">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{booking.box?.name || booking.box_name || 'Unknown Box'}</p>
+                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                                 {new Date(booking.date).toLocaleDateString()} • {booking.start_time} - {booking.end_time}
                               </p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-primary-600 font-medium">₹{booking.total_amount}</span>
+                          <div className="text-left sm:text-right flex sm:flex-col justify-between sm:justify-start">
+                            <span className="text-primary-600 dark:text-primary-400 font-medium">₹{booking.total_amount}</span>
                             <p className={`text-xs font-semibold ${booking.booking_status === 'Cancelled' ? 'text-red-500' : 'text-green-500'}`}>
                               {booking.booking_status}
                             </p>
@@ -455,13 +539,53 @@ const UserDashboard = () => {
                   )}
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-800">Favorite Sports</h3>
-                  {analyticsLoading ? (
-                    <div className="h-64 flex items-center justify-center text-gray-500">Loading chart...</div>
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
+                  <h3 className="text-base sm:text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200 flex items-center">
+                    <Trophy className="mr-2 text-yellow-500" size={20} />
+                    Your Level
+                  </h3>
+                  {gamificationLoading ? (
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading...</div>
+                  ) : userGameStats ? (
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mb-2">
+                          {userGameStats.points >= 1000 ? '5' : 
+                           userGameStats.points >= 500 ? '4' : 
+                           userGameStats.points >= 200 ? '3' : 
+                           userGameStats.points >= 50 ? '2' : '1'}
+                        </div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                          {userGameStats.points >= 1000 ? 'Sports Legend' : 
+                           userGameStats.points >= 500 ? 'Sports Master' : 
+                           userGameStats.points >= 200 ? 'Sports Expert' : 
+                           userGameStats.points >= 50 ? 'Sports Enthusiast' : 'Beginner'}
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{userGameStats.points} points</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Badges</span>
+                          <span className="font-medium">{userGameStats.badges_earned || 0}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">This Week</span>
+                          <span className="font-medium">{userGameStats.weekly_bookings || 0}/3</span>
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => setActiveTab('achievements')}
+                        className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-sm font-medium"
+                      >
+                        View All Achievements
+                      </button>
+                    </div>
                   ) : (
-                    <div className="h-64">
-                      <Doughnut data={doughnutData} options={doughnutOptions} />
+                    <div className="text-center py-4">
+                      <Trophy className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Start booking to begin your journey!</p>
                     </div>
                   )}
                 </div>
@@ -496,17 +620,17 @@ const UserDashboard = () => {
                       Upcoming Bookings ({upcomingBookings.length})
                     </h3>
                     {upcomingBookings.length === 0 ? (
-                      <p className="text-gray-600">No upcoming bookings.</p>
+                      <p className="text-gray-600 dark:text-gray-400">No upcoming bookings.</p>
                     ) : (
                       <div className="space-y-4">
                         {upcomingBookings.map((booking) => (
-                          <div key={booking.id} className="p-4 border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center bg-blue-50">
+                          <div key={booking.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center bg-blue-50 dark:bg-blue-900/30">
                             <div>
-                              <p className="font-semibold text-lg text-gray-900">{booking.box.name}</p>
-                              <p className="text-gray-700">
+                              <p className="font-semibold text-lg text-gray-900 dark:text-gray-100">{booking.box?.name || booking.box_name || 'Unknown Box'}</p>
+                              <p className="text-gray-700 dark:text-gray-300">
                                 {new Date(booking.date).toLocaleDateString()} at {booking.start_time} - {booking.end_time} ({booking.duration} hr)
                               </p>
-                              <p className="text-gray-700">Total: ₹{booking.total_amount}</p>
+                              <p className="text-gray-700 dark:text-gray-300">Total: ₹{booking.total_amount}</p>
                             </div>
                             <div className="mt-3 sm:mt-0">
                               {booking.booking_status === 'Confirmed' ? (
@@ -535,17 +659,17 @@ const UserDashboard = () => {
                       Past Bookings ({pastBookings.length})
                     </h3>
                     {pastBookings.length === 0 ? (
-                      <p className="text-gray-600">No past bookings.</p>
+                      <p className="text-gray-600 dark:text-gray-400">No past bookings.</p>
                     ) : (
                       <div className="space-y-4">
                         {pastBookings.map((booking) => (
-                          <div key={booking.id} className="p-4 border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50">
+                          <div key={booking.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 dark:bg-gray-700">
                             <div>
-                              <p className="font-semibold text-lg text-gray-900">{booking.box.name}</p>
-                              <p className="text-gray-700">
+                              <p className="font-semibold text-lg text-gray-900 dark:text-gray-100">{booking.box?.name || booking.box_name || 'Unknown Box'}</p>
+                              <p className="text-gray-700 dark:text-gray-300">
                                 {new Date(booking.date).toLocaleDateString()} at {booking.start_time} - {booking.end_time} ({booking.duration} hr)
                               </p>
-                              <p className="text-gray-700">Total: ₹{booking.total_amount}</p>
+                              <p className="text-gray-700 dark:text-gray-300">Total: ₹{booking.total_amount}</p>
                             </div>
                             <div>
                               <span className={`px-3 py-1 text-sm font-semibold rounded-full ${booking.booking_status === 'Cancelled' ? 'text-red-700 bg-red-100' : 'text-green-700 bg-green-100'}`}>
@@ -565,68 +689,216 @@ const UserDashboard = () => {
           {/* Analytics Tab */}
           {activeTab === 'analytics' && (
             <div className="space-y-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Performance & Activity Analytics</h2>
+              <div className="flex items-center space-x-3 mb-6">
+                <BarChart3 size={28} className="text-primary-600" />
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                  Your Performance & Activity Analytics
+                </h2>
+              </div>
+              
               {analyticsLoading ? (
-                <div className="text-center py-10 text-gray-500">Loading analytics data...</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow animate-pulse">
+                      <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded mb-2"></div>
+                      <div className="h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                    </div>
+                  ))}
+                </div>
               ) : !analyticsData ? (
-                <div className="text-center py-10 text-gray-500">No analytics data available.</div>
+                <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+                  <Activity size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No analytics data available.</p>
+                </div>
               ) : (
                 <>
+                  {/* Enhanced Stats Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-gradient-to-br from-green-500 to-green-700 p-6 rounded-lg shadow text-white">
-                      <p className="text-sm font-medium opacity-90">Total Hours Played</p>
-                      <p className="text-3xl font-bold mt-1">{(analyticsData?.total_hours_played ?? 0).toFixed(1)} <span className="text-xl">hrs</span></p>
+                    <div className="bg-gradient-to-br from-green-500 to-green-700 p-6 rounded-xl shadow-lg text-white transform hover:scale-105 transition-transform duration-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium opacity-90">Total Hours Played</p>
+                          <p className="text-3xl font-bold mt-1">
+                            {(analyticsData?.total_hours_played ?? 0).toFixed(1)}
+                            <span className="text-xl ml-1">hrs</span>
+                          </p>
+                        </div>
+                        <Clock size={32} className="opacity-80" />
+                      </div>
+                      <div className="mt-2 text-sm opacity-80">
+                        {analyticsData?.total_hours_played > 50 ? 'Sports enthusiast! 🏆' : 
+                         analyticsData?.total_hours_played > 20 ? 'Getting active! 💪' : 
+                         'Just getting started! 🌟'}
+                      </div>
                     </div>
-                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-lg shadow text-white">
-                      <p className="text-sm font-medium opacity-90">Average Rating</p>
-                      <p className="text-3xl font-bold mt-1">{(analyticsData?.average_rating ?? 0).toFixed(1)} / 5</p>
+
+                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-xl shadow-lg text-white transform hover:scale-105 transition-transform duration-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium opacity-90">Average Rating</p>
+                          <p className="text-3xl font-bold mt-1">
+                            {(analyticsData?.average_rating ?? 0).toFixed(1)} / 5
+                          </p>
+                        </div>
+                        <Trophy size={32} className="opacity-80" />
+                      </div>
+                      <div className="mt-2 text-sm opacity-80">
+                        {analyticsData?.average_rating >= 4.5 ? 'Excellent experience! ⭐' : 
+                         analyticsData?.average_rating >= 4.0 ? 'Great satisfaction! 👍' : 
+                         'Room for improvement 📈'}
+                      </div>
                     </div>
-                    <div className="bg-gradient-to-br from-orange-500 to-orange-700 p-6 rounded-lg shadow text-white">
-                      <p className="text-sm font-medium opacity-90">Avg Cost / Session</p>
-                      <p className="text-3xl font-bold mt-1">₹{(analyticsData?.average_cost_per_session ?? 0).toFixed(2)}</p>
+
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-700 p-6 rounded-xl shadow-lg text-white transform hover:scale-105 transition-transform duration-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium opacity-90">Avg Cost / Session</p>
+                          <p className="text-3xl font-bold mt-1">
+                            ₹{(analyticsData?.average_cost_per_session ?? 0).toFixed(0)}
+                          </p>
+                        </div>
+                        <CreditCard size={32} className="opacity-80" />
+                      </div>
+                      <div className="mt-2 text-sm opacity-80">
+                        {analyticsData?.average_cost_per_session < 500 ? 'Budget friendly! 💰' : 
+                         analyticsData?.average_cost_per_session < 1000 ? 'Good value 💵' : 
+                         'Premium choices 🌟'}
+                      </div>
                     </div>
-                    <div className="bg-gradient-to-br from-red-500 to-red-700 p-6 rounded-lg shadow text-white">
-                      <p className="text-sm font-medium opacity-90">Cancellation Rate</p>
-                      <p className="text-3xl font-bold mt-1">{(analyticsData?.cancellation_rate ?? 0).toFixed(1)}%</p>
+
+                    <div className="bg-gradient-to-br from-red-500 to-red-700 p-6 rounded-xl shadow-lg text-white transform hover:scale-105 transition-transform duration-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium opacity-90">Cancellation Rate</p>
+                          <p className="text-3xl font-bold mt-1">
+                            {(analyticsData?.cancellation_rate ?? 0).toFixed(1)}%
+                          </p>
+                        </div>
+                        <Target size={32} className="opacity-80" />
+                      </div>
+                      <div className="mt-2 text-sm opacity-80">
+                        {analyticsData?.cancellation_rate < 10 ? 'Very reliable! ✅' : 
+                         analyticsData?.cancellation_rate < 25 ? 'Pretty good 👌' : 
+                         'Try to plan better 📅'}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-lg shadow">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-800">Monthly Spending Trend</h3>
-                      <div className="h-72">
-                        {(analyticsData?.monthly_spending && analyticsData.monthly_spending.length > 0) ? (
-                          <Line data={lineData} options={lineChartOptions} />
-                        ) : (
-                          <div className="h-full flex items-center justify-center text-gray-400">No monthly spending data.</div>
-                        )}
+                  {/* Enhanced Charts Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Monthly Spending Trend */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <TrendingUp size={20} className="text-purple-600" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                          Monthly Spending Trend
+                        </h3>
+                      </div>
+                      <MonthlySpendingChart
+                        data={{
+                          labels: analyticsData?.monthly_spending?.map(item => item.month) || [],
+                          values: analyticsData?.monthly_spending?.map(item => item.total_spent) || [],
+                        }}
+                        loading={analyticsLoading}
+                      />
+                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        Track your investment in sports activities over time
                       </div>
                     </div>
-                    <div className="bg-white p-6 rounded-lg shadow">
-                      <h3 className="text-lg font-semibold mb-4 text-gray-800">Activity by Day of Week</h3>
-                      <div className="h-72">
-                        {(analyticsData?.activity_by_day && analyticsData.activity_by_day.length > 0) ? (
-                          <Bar data={barData} options={barChartOptions} />
-                        ) : (
-                          <div className="h-full flex items-center justify-center text-gray-400">No activity data.</div>
-                        )}
+
+                    {/* Sport Distribution */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Activity size={20} className="text-green-600" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                          Favorite Sports
+                        </h3>
+                      </div>
+                      <EnhancedSportDistribution
+                        data={{
+                          labels: analyticsData?.sport_distribution?.map(item => item.sport) || [],
+                          values: analyticsData?.sport_distribution?.map(item => item.percentage) || [],
+                        }}
+                        loading={analyticsLoading}
+                      />
+                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        Your sports preferences based on booking history
+                      </div>
+                    </div>
+
+                    {/* Activity by Day */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Calendar size={20} className="text-blue-600" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                          Weekly Activity Pattern
+                        </h3>
+                      </div>
+                      <BookingActivityChart
+                        data={{
+                          labels: analyticsData?.activity_by_day?.map(item => item.day_of_week) || [],
+                          values: analyticsData?.activity_by_day?.map(item => item.total_hours) || [],
+                        }}
+                        loading={analyticsLoading}
+                      />
+                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        When you're most active during the week
+                      </div>
+                    </div>
+
+                    {/* Peak Booking Hours */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Clock size={20} className="text-orange-600" />
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                          Peak Booking Hours
+                        </h3>
+                      </div>
+                      <PeakHoursChart
+                        data={{
+                          labels: analyticsData?.peak_booking_hours?.map(item => item.hour_range) || [],
+                          values: analyticsData?.peak_booking_hours?.map(item => item.percentage) || [],
+                        }}
+                        loading={analyticsLoading}
+                      />
+                      <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                        Your preferred time slots for sports activities
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-800">Your Peak Booking Hours</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {(analyticsData?.peak_booking_hours && analyticsData.peak_booking_hours.length > 0) ? (
-                        analyticsData.peak_booking_hours.map((hour, index) => (
-                          <div key={index} className="p-4 bg-purple-50 rounded-lg flex items-center justify-between">
-                            <span className="font-medium text-purple-800">{hour.hour_range}</span>
-                            <span className="text-purple-700 text-lg font-bold">{hour.percentage?.toFixed(1) ?? 0}%</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-gray-600">No peak booking hours data available.</p>
-                      )}
+                  {/* Insights Section */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                      <Info size={20} className="mr-2 text-blue-600" />
+                      Your Sports Insights
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+                        <p className="font-medium text-gray-800 dark:text-white">Most Active Sport</p>
+                        <p className="text-blue-600 dark:text-blue-400">
+                          {analyticsData?.sport_distribution?.[0]?.sport || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+                        <p className="font-medium text-gray-800 dark:text-white">Total Investment</p>
+                        <p className="text-green-600 dark:text-green-400">
+                          ₹{(analyticsData?.total_spent || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+                        <p className="font-medium text-gray-800 dark:text-white">This Month</p>
+                        <p className="text-purple-600 dark:text-purple-400">
+                          {analyticsData?.this_month_bookings || 0} bookings
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+                        <p className="font-medium text-gray-800 dark:text-white">Consistency Score</p>
+                        <p className="text-orange-600 dark:text-orange-400">
+                          {analyticsData?.cancellation_rate < 10 ? 'Excellent' : 
+                           analyticsData?.cancellation_rate < 25 ? 'Good' : 'Needs Improvement'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -636,32 +908,119 @@ const UserDashboard = () => {
 
           {/* Achievements Tab */}
           {activeTab === 'achievements' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Achievements</h2>
-              {achievementsLoading ? (
-                <div className="text-center py-10 text-gray-500">Loading achievements...</div>
-              ) : !Array.isArray(achievements) || achievements.length === 0 ? (
-                <div className="text-center py-10 text-gray-600 bg-gray-50 rounded-lg">
-                  <p>No achievements yet. Keep booking sessions to unlock them!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {achievements.filter(Boolean).map((achievement, idx) => (
-                    <div key={achievement?.id || achievement?.name || idx} className={`p-6 rounded-lg shadow flex items-center space-x-4 ${achievement?.earned ? 'bg-gradient-to-br from-green-100 to-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200 opacity-75'}`}>
-                      <div className={`text-4xl ${achievement?.earned ? 'text-green-600' : 'text-gray-400'}`}>
-                        <Trophy size={32} />
+            <div className="space-y-8">
+              <div className="flex items-center space-x-3 mb-6">
+                <Trophy size={28} className="text-yellow-600" />
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                  Your Gaming Progress & Achievements
+                </h2>
+              </div>
+
+              {/* Gamification Stats */}
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                  <Sparkles className="mr-2 text-purple-600" />
+                  Your Sports Journey
+                </h3>
+                <GamificationStats userStats={userGameStats} loading={gamificationLoading} />
+              </div>
+
+              {/* Achievements Grid */}
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+                  <Trophy className="mr-2 text-yellow-600" />
+                  Achievement Badges
+                </h3>
+                
+                {achievementsLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="bg-white p-6 rounded-lg shadow animate-pulse">
+                        <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-4"></div>
+                        <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-300 rounded"></div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-lg text-gray-900">{achievement?.name || 'Achievement'}</h3>
-                        <p className="text-sm text-gray-700">{achievement?.description || ''}</p>
-                        {achievement?.earned && (
-                          <span className="mt-2 inline-block px-3 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Earned!</span>
-                        )}
+                    ))}
+                  </div>
+                ) : !Array.isArray(achievements) || achievements.length === 0 ? (
+                  <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl">
+                    <Trophy size={64} className="mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">No achievements unlocked yet!</p>
+                    <p className="text-gray-500 dark:text-gray-500">Keep booking sessions to earn your first badge.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {achievements.filter(Boolean).map((achievement, idx) => {
+                      // Determine badge type based on achievement name
+                      let badgeType = 'default';
+                      const name = achievement?.name?.toLowerCase() || '';
+                      if (name.includes('first') || name.includes('timer')) badgeType = 'bronze';
+                      else if (name.includes('weekly') || name.includes('warrior')) badgeType = 'silver';
+                      else if (name.includes('regular') || name.includes('player')) badgeType = 'gold';
+                      else if (name.includes('sports') || name.includes('enthusiast')) badgeType = 'platinum';
+                      else if (name.includes('spender') || name.includes('big')) badgeType = 'gold';
+                      else if (name.includes('monthly') || name.includes('champion')) badgeType = 'platinum';
+
+                      return (
+                        <Badge
+                          key={achievement?.id || achievement?.name || idx}
+                          name={achievement?.name || 'Achievement'}
+                          description={achievement?.description || ''}
+                          earned={achievement?.earned || false}
+                          type={badgeType}
+                          size="md"
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Achievement Progress */}
+                {achievements.length > 0 && (
+                  <div className="mt-8 bg-white dark:bg-gray-800 p-6 rounded-xl shadow">
+                    <h4 className="text-lg font-semibold mb-4 flex items-center">
+                      <TrendingUp className="mr-2 text-green-600" />
+                      Progress Summary
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-green-600">
+                          {achievements.filter(a => a?.earned).length}
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400">Badges Earned</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {achievements.length}
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400">Total Available</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-purple-600">
+                          {achievements.length > 0 ? Math.round((achievements.filter(a => a?.earned).length / achievements.length) * 100) : 0}%
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400">Completion Rate</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    
+                    {/* Progress Bar */}
+                    <div className="mt-6">
+                      <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        <span>Achievement Progress</span>
+                        <span>{achievements.filter(a => a?.earned).length} / {achievements.length}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-1000 ease-out"
+                          style={{ 
+                            width: `${achievements.length > 0 ? (achievements.filter(a => a?.earned).length / achievements.length) * 100 : 0}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -698,7 +1057,7 @@ const UserDashboard = () => {
                             View Box
                           </button>
                           <button
-                            onClick={() => toast.info('Remove from favorites functionality needs backend integration.')}
+                            onClick={() => removeFavorite(fav.id)}
                             className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 text-sm"
                           >
                             Remove
@@ -712,7 +1071,9 @@ const UserDashboard = () => {
             </div>
           )}
         </div>
-      </div>
+      </EnhancedCard>
+    </motion.div>
+  </div>
 
       {/* Cancel Confirmation Modal */}
       <Transition appear show={isCancelModalOpen} as={Fragment}>

@@ -36,20 +36,29 @@ export const BoxProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         const formData = new FormData();
+        // Always send 'sport' as first selected sport for backend compatibility
+        if (boxData.sports && boxData.sports.length > 0) {
+            formData.append('sport', boxData.sports[0]);
+        }
         Object.keys(boxData).forEach(key => {
-            if (key === 'images') return;
-            const value = boxData[key];
-            if (Array.isArray(value)) {
+            if (key === 'images' || key === 'sport') return;
+            let value = boxData[key];
+            // For amenities, sports, rules: always send as JSON string
+            if (["amenities", "sports", "rules"].includes(key)) {
                 formData.append(key, JSON.stringify(value));
             } else if (value !== null && value !== undefined) {
                 formData.append(key, value);
             }
         });
+        // Add all images (multi-upload)
         if (boxData.images && boxData.images.length > 0) {
-            formData.append('image', boxData.images[0]);
+            boxData.images.forEach((file, idx) => {
+                formData.append('images', file); // backend should handle images as a list
+                if (idx === 0) formData.append('image', file); // first image as main
+            });
         }
         try {
-            await api.post('/boxes/owner/boxes/', formData, {
+            await api.post('/boxes/owner/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             await fetchOwnerBoxes();
@@ -64,10 +73,52 @@ export const BoxProvider = ({ children }) => {
         }
     }, []); // fetchOwnerBoxes is defined below
 
+    const updateBox = useCallback(async (boxId, boxData) => {
+        setLoading(true);
+        setError(null);
+        const formData = new FormData();
+        // Always send 'sport' as first selected sport for backend compatibility
+        if (boxData.sports && boxData.sports.length > 0) {
+            formData.append('sport', boxData.sports[0]);
+        }
+        Object.keys(boxData).forEach(key => {
+            if (key === 'images' || key === 'sport') return;
+            let value = boxData[key];
+            // For amenities, sports, rules: always send as JSON string
+            if (["amenities", "sports", "rules"].includes(key)) {
+                formData.append(key, JSON.stringify(value));
+            } else if (value !== null && value !== undefined) {
+                formData.append(key, value);
+            }
+        });
+        // Add new images if any
+        if (boxData.images && boxData.images.length > 0) {
+            boxData.images.forEach((file, idx) => {
+                formData.append('images', file);
+                if (idx === 0) formData.append('image', file);
+            });
+        }
+        try {
+            await api.put(`/boxes/owner/${boxId}/`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            await fetchOwnerBoxes();
+            return { success: true };
+        } catch (err) {
+            console.error('Error updating box:', err.response?.data);
+            const errorMessage = err.response?.data?.detail || Object.values(err.response?.data || {})[0]?.[0] || 'Failed to update the box.';
+            setError(errorMessage);
+            return { success: false, error: errorMessage };
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     const fetchOwnerBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/owner/boxes/');
+            const response = await api.get('/boxes/owner/');
+            console.log('Owner boxes fetched:', response.data);
             setOwnerBoxes(processBoxData(response.data.results || response.data));
         } catch (err) {
             console.error('Error fetching owner boxes:', err);
@@ -78,10 +129,18 @@ export const BoxProvider = ({ children }) => {
     }, [processBoxData]);
 
     const fetchNearbyBoxes = useCallback(async (latitude, longitude, radius = 10) => {
+        // Add validation
+        if (!latitude || !longitude) {
+            console.error('fetchNearbyBoxes: Missing latitude or longitude', { latitude, longitude });
+            setError('Invalid location data for nearby search.');
+            return;
+        }
+        
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/nearby/', { 
-                params: { lat: latitude, lng: longitude, radius } 
+            console.log('fetchNearbyBoxes: Making API call with params:', { lat: latitude, lng: longitude, radius });
+            const response = await api.get('/boxes/public/nearby/', { 
+                params: { lat: latitude, lng: longitude, radius: radius || 10 }
             });
             setNearbyBoxes(processBoxData(response.data));
         } catch (err) {
@@ -94,12 +153,36 @@ export const BoxProvider = ({ children }) => {
 
     const fetchBoxes = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
-            const response = await api.get('/boxes/boxes/', { params: filters });
-            setBoxes(processBoxData(response.data.results || response.data));
+            console.log('BoxContext: Making API call with params:', filters);
+            
+            // Single API call - no pagination needed since API returns all results
+            const response = await api.get('/boxes/public/', { params: filters });
+            const data = response.data;
+            
+            console.log('BoxContext: API Response - Count:', data.count, 'Results:', data.results?.length || 0);
+            console.log('BoxContext: First 5 Box IDs:', data.results?.slice(0, 5)?.map(box => box.id) || []);
+            
+            // Handle response
+            const boxesArray = data.results || data;
+            if (!Array.isArray(boxesArray)) {
+                console.error('BoxContext: Invalid response format - not an array:', boxesArray);
+                setError('Invalid response format from server');
+                return;
+            }
+            
+            const processedBoxes = processBoxData(boxesArray);
+            console.log('BoxContext: Processed boxes:', processedBoxes.length);
+            setBoxes(processedBoxes);
+            
         } catch (err) {
-            console.error('Error fetching boxes:', err);
-            setError('Could not load boxes.');
+            console.error('BoxContext: Error fetching boxes:', err);
+            if (err.response) {
+                console.error('BoxContext: Response status:', err.response.status);
+                console.error('BoxContext: Response data:', err.response.data);
+            }
+            setError('Could not load boxes. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -108,7 +191,7 @@ export const BoxProvider = ({ children }) => {
     const fetchFeaturedBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/featured/');
+            const response = await api.get('/boxes/public/featured/');
             setFeaturedBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching featured boxes:', err);
@@ -121,7 +204,7 @@ export const BoxProvider = ({ children }) => {
     const fetchPopularBoxes = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get('/boxes/boxes/popular/');
+            const response = await api.get('/boxes/public/popular/');
             setPopularBoxes(processBoxData(response.data));
         } catch (err) {
             console.error('Error fetching popular boxes:', err);
@@ -131,17 +214,11 @@ export const BoxProvider = ({ children }) => {
         }
     }, [processBoxData]);
 
-    // --- ADDED THIS HOOK TO AUTOMATICALLY FETCH ON FILTER CHANGE ---
-    // This is the only modification made to your file.
+    // Fetch boxes when filters change
     useEffect(() => {
-        // This check prevents an API call on the very first render before filters are set.
-        // The first fetch is triggered when the BoxListings component calls setFilters.
-        if (Object.keys(filters).length > 0) {
-            fetchBoxes();
-        }
-    }, [fetchBoxes]); // The dependency array includes fetchBoxes.
-                     // Since fetchBoxes itself depends on 'filters', this effect will
-                     // run every time the filters are changed.
+        console.log('BoxContext: Filters changed, fetching boxes with filters:', filters);
+        fetchBoxes();
+    }, [fetchBoxes]);
 
     const contextValue = {
         boxes,
@@ -157,8 +234,17 @@ export const BoxProvider = ({ children }) => {
         fetchNearbyBoxes,
         fetchOwnerBoxes,
         addBox,
+        updateBox,
         filters,
         setFilters,
+        clearFiltersAndRefresh: () => {
+            console.log('BoxContext: Clearing filters and refreshing...');
+            // Reset filters to empty state
+            setFilters({});
+            // Force immediate refresh
+            setLoading(true);
+            setError(null);
+        },
         refreshAll: () => {
             fetchBoxes();
             fetchFeaturedBoxes();

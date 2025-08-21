@@ -18,6 +18,13 @@ from django.contrib import admin
 from django.urls import path , include
 from django.conf import settings
 from django.conf.urls.static import static
+from . import api_views
+
+# Custom error handlers
+handler404 = 'BookMyBox.error_views.custom_404_view'
+handler500 = 'BookMyBox.error_views.custom_500_view'
+handler400 = 'BookMyBox.error_views.custom_400_view'
+handler403 = 'BookMyBox.error_views.custom_403_view'
 
 
 urlpatterns = [
@@ -29,5 +36,10 @@ urlpatterns = [
     path('api/bookings/', include('bookings.urls')),
     path('api/owner_dashboard/', include('owner_dashboard.urls')),
     path('api/dashboard/', include('user_dashboard.urls')),
+    path('', include('chatbot.urls')),  # Chatbot endpoints
+    
+    # API health and info endpoints
+    path('api/health/', api_views.health_check, name='health_check'),
+    path('api/', api_views.api_info, name='api_info'),
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

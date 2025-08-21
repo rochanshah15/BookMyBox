@@ -10,9 +10,13 @@ from collections import defaultdict
 
 from bookings.models import Booking
 from boxes.models import Box, UserFavoriteBox
-from .models import Achievement
+from .models import Achievement, UserBadge, UserGameStats, OwnerGameStats
 from user_profile.models import UserProfile
-from .serializers import AchievementSerializer, FavoriteBoxSerializer
+from .serializers import (
+    AchievementSerializer, FavoriteBoxSerializer, UserBadgeSerializer,
+    UserGameStatsSerializer, OwnerGameStatsSerializer
+)
+from .gamification import trigger_gamification_check
 
 class DashboardAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -117,20 +121,102 @@ class DashboardFavoritesView(APIView):
         else:
             return Response(serializer.data, status=200)
 
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        box_id = request.data.get('box_id')
+        if not box_id:
+            return Response({'error': 'box_id is required'}, status=400)
+        
+        try:
+            favorite = UserFavoriteBox.objects.get(user=user, box_id=box_id)
+            favorite.delete()
+            return Response({'message': 'Favorite removed successfully'}, status=200)
+        except UserFavoriteBox.DoesNotExist:
+            return Response({'error': 'Favorite not found'}, status=404)
+
+
+class RemoveFavoriteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, box_id, *args, **kwargs):
+        user = request.user
+        
+        try:
+            favorite = UserFavoriteBox.objects.get(user=user, box_id=box_id)
+            favorite.delete()
+            return Response({'message': 'Favorite removed successfully'}, status=200)
+        except UserFavoriteBox.DoesNotExist:
+            return Response({'error': 'Favorite not found'}, status=404)
+
 
 class DashboardAchievementsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        all_achievements = Achievement.objects.all()
-        # Use user.profile.achievements.all() for the user's achievements
-        user_achievements = user.profile.achievements.all() if hasattr(user, 'profile') else Achievement.objects.none()
+        
+        # Trigger gamification check based on user type
+        user_type = 'owner' if hasattr(user, 'owner_stats') or Box.objects.filter(owner=user).exists() else 'user'
+        newly_earned = trigger_gamification_check(user, user_type)
+        
+        # Get user's earned badges
+        user_badges = UserBadge.objects.filter(user=user).select_related('achievement')
+        earned_achievements = {badge.achievement.id for badge in user_badges}
+        
+        # Get all achievements relevant to user type
+        if user_type == 'owner':
+            all_achievements = Achievement.objects.filter(achievement_type__in=['owner', 'both'], is_active=True)
+        else:
+            all_achievements = Achievement.objects.filter(achievement_type__in=['user', 'both'], is_active=True)
 
-        # Check which achievements the user has earned
+        # Prepare response
         result = []
         for ach in all_achievements:
             data = AchievementSerializer(ach).data
-            data['earned'] = ach in user_achievements
+            data['earned'] = ach.id in earned_achievements
+            data['newly_earned'] = ach in newly_earned
             result.append(data)
+        
         return Response(result)
+
+class UserGameStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        
+        # Trigger gamification check
+        trigger_gamification_check(user, 'user')
+        
+        # Get or create user game stats
+        user_stats, created = UserGameStats.objects.get_or_create(user=user)
+        
+        # Get user badges
+        user_badges = UserBadge.objects.filter(user=user).select_related('achievement').order_by('-earned_at')
+        
+        return Response({
+            'stats': UserGameStatsSerializer(user_stats).data,
+            'badges': UserBadgeSerializer(user_badges, many=True).data,
+            'total_badges': user_badges.count()
+        })
+
+class OwnerGameStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        
+        # Trigger gamification check
+        trigger_gamification_check(user, 'owner')
+        
+        # Get or create owner game stats
+        owner_stats, created = OwnerGameStats.objects.get_or_create(user=user)
+        
+        # Get user badges (achievements for owners)
+        user_badges = UserBadge.objects.filter(user=user).select_related('achievement').order_by('-earned_at')
+        
+        return Response({
+            'stats': OwnerGameStatsSerializer(owner_stats).data,
+            'badges': UserBadgeSerializer(user_badges, many=True).data,
+            'total_badges': user_badges.count()
+        })

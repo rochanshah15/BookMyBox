@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Let Vite choose an available port automatically
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000', // Your Django server's address

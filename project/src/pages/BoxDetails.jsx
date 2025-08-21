@@ -3,12 +3,15 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
-import { Star, MapPin, Users, Wifi, Car, Coffee, Shield, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Star, MapPin, Users, Wifi, Car, Coffee, Shield, Calendar as CalendarIcon, ArrowLeft, Heart } from 'lucide-react';
 import Calendar from 'react-calendar';
 import { useBox } from '../context/BoxContext';
 import { useBooking } from '../context/BookingContext';
 import Modal from '../components/common/Modal';
 import Loader from '../components/common/Loader';
+import Chatbot from '../components/common/Chatbot';
+import AddReviewForm from '../components/common/AddReviewForm';
+import { EnhancedButton } from '../components/common/EnhancedComponents';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -31,9 +34,12 @@ const BoxDetails = () => {
     const [duration, setDuration] = useState(1);
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [bookingLoading, setBookingLoading] = useState(false);
-    const [bookingData, setBookingData] = useState(null); // Still useful to hold temporary data for booking submission
-    const [error, setError] = useState(null); // State for handling fetch errors
-    const { boxes } = useBox(); // Keeping useBox for potential general box list, but fetching specific details via API
+    const [bookingData, setBookingData] = useState(null);
+    const [error, setError] = useState(null);
+    const [bookedSlots, setBookedSlots] = useState([]); // New state for booked time slots
+    const [slotsLoading, setSlotsLoading] = useState(false); // Loading state for slots
+    const [showReviewModal, setShowReviewModal] = useState(false); // State for review modal
+    const { boxes } = useBox();
     const { createBooking } = useBooking();
     const { isAuthenticated, user } = useAuth();
 
@@ -51,6 +57,33 @@ const BoxDetails = () => {
         };
         checkFavorite();
     }, [user, box?.id]);
+
+    // Fetch booked time slots when box or selected date changes
+    useEffect(() => {
+        const fetchBookedSlots = async () => {
+            if (!box?.id || !selectedDate) return;
+            
+            setSlotsLoading(true);
+            try {
+                const dateString = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+                const response = await api.get(`/bookings/booked_slots/?box_id=${box.id}&date=${dateString}`);
+                setBookedSlots(response.data.booked_slots || []);
+            } catch (error) {
+                console.error('Error fetching booked slots:', error);
+                setBookedSlots([]); // Reset to empty if error
+            } finally {
+                setSlotsLoading(false);
+            }
+        };
+
+        fetchBookedSlots();
+
+        // Set up auto-refresh every 30 seconds to keep slots current
+        const intervalId = setInterval(fetchBookedSlots, 30000);
+
+        // Cleanup interval on unmount or dependency change
+        return () => clearInterval(intervalId);
+    }, [box?.id, selectedDate]); // Re-fetch when box or date changes
 
     const handleAddToFavorites = async () => {
         if (!user) {
@@ -78,7 +111,7 @@ const BoxDetails = () => {
             setError(null); // Clear previous errors
             try {
                 // Fetch box details from the backend using the imported 'api' (Axios instance)
-                const response = await api.get(`/boxes/boxes/${id}/`); // Adjust this endpoint to your actual backend API
+                const response = await api.get(`/boxes/public/${id}/`); // Updated to use public endpoint
                 const fetchedBox = response.data;
 
                 // Ensure rating is a number (backend might send it as string or number)
@@ -109,6 +142,31 @@ const BoxDetails = () => {
         '18:00', '19:00', '20:00', '21:00', '22:00'
     ];
 
+    // Helper function to check if a time slot is available
+    const isTimeSlotAvailable = (timeSlot) => {
+        if (!timeSlot || bookedSlots.length === 0) return true;
+        
+        // Check if the selected time slot conflicts with any booked slots
+        const selectedHour = parseInt(timeSlot.split(':')[0]);
+        
+        // Check if the duration of selected slot would conflict with booked slots
+        for (let i = 0; i < duration; i++) {
+            const checkHour = selectedHour + i;
+            const checkTime = `${checkHour.toString().padStart(2, '0')}:00`;
+            
+            if (bookedSlots.includes(checkTime)) {
+                return false;
+            }
+        }
+        
+        return true;
+    };
+
+    // Helper function to check if a time slot is booked
+    const isTimeSlotBooked = (timeSlot) => {
+        return bookedSlots.includes(timeSlot);
+    };
+
     const amenityIcons = {
         'Changing Room': Users,
         'Parking': Car,
@@ -116,6 +174,38 @@ const BoxDetails = () => {
         'WiFi': Wifi,
         'Refreshments': Coffee,
         'Security': Shield
+    };
+
+    // Handle when a new review is added
+    const handleReviewAdded = (newReview) => {
+        // Add the new review to the box's reviews array
+        setBox(prevBox => ({
+            ...prevBox,
+            reviews: [newReview, ...(prevBox.reviews || [])]
+        }));
+        
+        // Close the review modal
+        setShowReviewModal(false);
+        
+        // Optionally refresh the entire box data to get updated rating
+        setTimeout(() => {
+            const fetchBoxDetails = async () => {
+                try {
+                    const response = await api.get(`/boxes/public/${id}/`);
+                    const fetchedBox = response.data;
+                    if (fetchedBox && typeof fetchedBox.rating === 'string') {
+                        fetchedBox.rating = parseFloat(fetchedBox.rating);
+                    }
+                    if (fetchedBox && (fetchedBox.rating === undefined || fetchedBox.rating === null)) {
+                        fetchedBox.rating = 0;
+                    }
+                    setBox(fetchedBox);
+                } catch (err) {
+                    console.error('Error refreshing box details:', err);
+                }
+            };
+            fetchBoxDetails();
+        }, 1000);
     };
 
     // This function now directly handles the booking submission to the backend
@@ -127,6 +217,12 @@ const BoxDetails = () => {
 
         if (!selectedTimeSlot) {
             alert('Please select a time slot');
+            return;
+        }
+
+        // Check if the selected time slot is available
+        if (!isTimeSlotAvailable(selectedTimeSlot)) {
+            alert('Selected time slot is not available. Please choose a different time.');
             return;
         }
 
@@ -170,6 +266,15 @@ const BoxDetails = () => {
                 setSelectedTimeSlot('');
                 setDuration(1);
                 setSelectedDate(new Date());
+                
+                // Refresh booked slots to show the new booking
+                const dateString = selectedDate.toISOString().split('T')[0];
+                try {
+                    const response = await api.get(`/bookings/booked_slots/?box_id=${box.id}&date=${dateString}`);
+                    setBookedSlots(response.data.booked_slots || []);
+                } catch (error) {
+                    console.error('Error refreshing booked slots:', error);
+                }
             } else {
                 console.error('Backend booking creation failed:', result.error);
                 alert(`Booking failed: ${result.error || 'Please try again.'} 🙁`);
@@ -185,7 +290,7 @@ const BoxDetails = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
                 <Loader text="Loading box details..." />
             </div>
         );
@@ -193,12 +298,14 @@ const BoxDetails = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+                <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                     <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-                    <p className="text-gray-700 mb-6">{error}</p>
-                    <Link to="/boxes" className="btn-primary">
-                        Browse Other Boxes
+                    <p className="text-gray-700 dark:text-gray-300 mb-6">{error}</p>
+                    <Link to="/boxes">
+                        <EnhancedButton variant="primary" size="md">
+                            Browse Other Boxes
+                        </EnhancedButton>
                     </Link>
                 </div>
             </div>
@@ -207,12 +314,14 @@ const BoxDetails = () => {
 
     if (!box) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Box not found</h2>
-                    <p className="text-gray-700 mb-6">The box you are looking for does not exist or has been removed.</p>
-                    <Link to="/boxes" className="btn-primary">
-                        Browse Other Boxes
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
+                <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Box not found</h2>
+                    <p className="text-gray-700 dark:text-gray-300 mb-6">The box you are looking for does not exist or has been removed.</p>
+                    <Link to="/boxes">
+                        <EnhancedButton variant="primary" size="md">
+                            Browse Other Boxes
+                        </EnhancedButton>
                     </Link>
                 </div>
             </div>
@@ -220,19 +329,27 @@ const BoxDetails = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Back Button */}
-            <div className="bg-white border-b">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+            {/* Header Section with Back Button */}
+            <motion.div 
+                className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b dark:border-gray-700 transition-colors duration-200"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+            >
                 <div className="container-max section-padding py-4">
-                    <Link
-                        to="/boxes"
-                        className="inline-flex items-center text-gray-600 hover:text-primary-500 transition-colors"
-                    >
-                        <ArrowLeft size={20} className="mr-2" />
-                        Back to Boxes
-                    </Link>
+                    <div className="flex items-center justify-between">
+                        <Link
+                            to="/boxes"
+                            className="inline-flex items-center px-3 py-2 bg-white/90 dark:bg-gray-700/90 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:text-primary-500 dark:hover:text-primary-400 hover:scale-105 transition-all duration-300"
+                        >
+                            <ArrowLeft size={18} className="mr-2" />
+                            <span className="text-sm font-medium">Back</span>
+                        </Link>
+                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Box Details</h2>
+                        <div className="w-20"></div> {/* Spacer for centering */}
+                    </div>
                 </div>
-            </div>
+            </motion.div>
 
             <div className="container-max section-padding py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -272,8 +389,8 @@ const BoxDetails = () => {
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div>
-                                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{box.name}</h1>
-                                    <div className="flex items-center space-x-4 text-gray-600">
+                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{box.name}</h1>
+                                    <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-400">
                                         <div className="flex items-center">
                                             <MapPin size={18} className="mr-1" />
                                             <span>{box.location}</span>
@@ -291,24 +408,27 @@ const BoxDetails = () => {
                                             {typeof box.rating === 'number' ? box.rating.toFixed(1) : 'N/A'}
                                         </span>
                                     </div>
-                                    <div className="text-2xl font-bold text-primary-600">₹{box.price}/hr</div>
+                                    <div className="text-2xl font-bold text-primary-600 mb-4">₹{box.price}/hr</div>
                                     {/* Add to Favorites Button */}
                                     {user && (
-                                        <button
+                                        <EnhancedButton
                                             onClick={handleAddToFavorites}
-                                            className={`mt-3 px-4 py-2 rounded-lg shadow w-full transition-colors
-                                                ${isFavorite ? 'bg-green-500 text-white cursor-not-allowed' : 'bg-pink-500 text-white hover:bg-pink-600'}`}
-                                            disabled={isFavorite || favoriteLoading}
+                                            variant={isFavorite ? "secondary" : "primary"}
+                                            size="sm"
+                                            className={`w-full ${isFavorite ? 'bg-green-100 text-green-700 border-green-300' : ''}`}
+                                            icon={<Heart size={16} className={isFavorite ? 'fill-current' : ''} />}
+                                            loading={favoriteLoading}
+                                            disabled={isFavorite}
                                         >
-                                            {isFavorite ? 'Added' : (favoriteLoading ? 'Adding...' : 'Add to Favorites')}
-                                        </button>
+                                            {isFavorite ? 'Added to Favorites' : 'Add to Favorites'}
+                                        </EnhancedButton>
                                     )}
                                 </div>
                             </div>
 
                             <div className="border-t pt-4">
                                 <h3 className="text-lg font-semibold mb-3">Description</h3>
-                                <p className="text-gray-600 leading-relaxed">
+                                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                                     {box.fullDescription || box.description}
                                 </p>
                             </div>
@@ -323,15 +443,20 @@ const BoxDetails = () => {
                         >
                             <h3 className="text-lg font-semibold mb-4">Amenities</h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {box.amenities.map((amenity, index) => {
+                                {box.amenities && Array.isArray(box.amenities) ? box.amenities.map((amenity, index) => {
                                     const IconComponent = amenityIcons[amenity] || Shield;
                                     return (
                                         <div key={index} className="flex items-center space-x-2">
                                             <IconComponent size={18} className="text-primary-500" />
-                                            <span className="text-gray-700">{amenity}</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{amenity}</span>
                                         </div>
                                     );
-                                })}
+                                }) : (
+                                    <div className="flex items-center space-x-2">
+                                        <Shield size={18} className="text-primary-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">No amenities listed</span>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
 
@@ -345,12 +470,19 @@ const BoxDetails = () => {
                             >
                                 <h3 className="text-lg font-semibold mb-4">Rules & Guidelines</h3>
                                 <ul className="space-y-2">
-                                    {box.rules.map((rule, index) => (
+                                    {box.rules && Array.isArray(box.rules) ? box.rules.map((rule, index) => (
                                         <li key={index} className="flex items-start">
                                             <span className="text-primary-500 mr-2">•</span>
-                                            <span className="text-gray-700">{rule}</span>
+                                            <span className="text-gray-700 dark:text-gray-300">{rule}</span>
                                         </li>
-                                    ))}
+                                    )) : (
+                                        <li className="flex items-start">
+                                            <span className="text-primary-500 mr-2">•</span>
+                                            <span className="text-gray-700 dark:text-gray-300">
+                                                {box.rules || "No specific rules provided"}
+                                            </span>
+                                        </li>
+                                    )}
                                 </ul>
                             </motion.div>
                         )}
@@ -363,10 +495,22 @@ const BoxDetails = () => {
                                 transition={{ delay: 0.4 }}
                                 className="card p-6"
                             >
-                                <h3 className="text-lg font-semibold mb-4">Reviews</h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-semibold">Reviews</h3>
+                                    {isAuthenticated && (
+                                        <EnhancedButton
+                                            onClick={() => setShowReviewModal(true)}
+                                            variant="primary"
+                                            size="sm"
+                                            icon={<Star size={16} />}
+                                        >
+                                            Add Review
+                                        </EnhancedButton>
+                                    )}
+                                </div>
                                 <div className="space-y-4">
-                                    {box.reviews.map((review) => (
-                                        <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                                    {box.reviews && Array.isArray(box.reviews) && box.reviews.length > 0 ? box.reviews.map((review) => (
+                                        <div key={review.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-b-0">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center space-x-2">
                                                     <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white font-medium">
@@ -386,10 +530,14 @@ const BoxDetails = () => {
                                                     ))}
                                                 </div>
                                             </div>
-                                            <p className="text-gray-600">{review.comment}</p>
-                                            <p className="text-sm text-gray-500 mt-1">{review.date}</p>
+                                            <p className="text-gray-600 dark:text-gray-400">{review.comment}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">{review.date}</p>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <div className="text-center py-8">
+                                            <p className="text-gray-500 dark:text-gray-400">No reviews yet. Be the first to review this box!</p>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
@@ -423,23 +571,61 @@ const BoxDetails = () => {
 
                             {/* Time Slots */}
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Select Time Slot
                                 </label>
-                                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                                    {timeSlots.map((time) => (
-                                        <button
-                                            key={time}
-                                            onClick={() => setSelectedTimeSlot(time)}
-                                            className={`p-2 text-sm rounded border transition-colors ${
-                                                selectedTimeSlot === time
-                                                    ? 'bg-primary-500 text-white border-primary-500'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-primary-500'
-                                            }`}
-                                        >
-                                            {time}
-                                        </button>
-                                    ))}
+                                {slotsLoading ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                        <span className="text-sm text-gray-600 dark:text-gray-400">Loading available slots...</span>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                                        {timeSlots.map((time) => {
+                                            const isBooked = isTimeSlotBooked(time);
+                                            const isSelected = selectedTimeSlot === time;
+                                            const canSelect = !isBooked && isTimeSlotAvailable(time);
+                                            
+                                            return (
+                                                <button
+                                                    key={time}
+                                                    onClick={() => canSelect ? setSelectedTimeSlot(time) : null}
+                                                    disabled={isBooked || !canSelect}
+                                                    className={`p-2 text-sm rounded border transition-all duration-200 ${
+                                                        isBooked
+                                                            ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700 cursor-not-allowed'
+                                                            : isSelected
+                                                            ? 'bg-primary-500 text-white border-primary-500'
+                                                            : canSelect
+                                                            ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900'
+                                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                                                    }`}
+                                                    title={isBooked ? 'This time slot is already booked' : canSelect ? 'Available' : 'Not available for selected duration'}
+                                                >
+                                                    {time}
+                                                    {isBooked && (
+                                                        <div className="text-xs mt-1 font-medium">Booked</div>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                
+                                {/* Legend */}
+                                <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Available</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-primary-500 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Selected</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded mr-2"></div>
+                                        <span className="text-gray-600 dark:text-gray-400">Booked</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -478,12 +664,16 @@ const BoxDetails = () => {
                             </div>
 
                             {/* Book Button */}
-                            <button
-                                onClick={() => setShowBookingModal(true)} // Still opens confirmation modal first
-                                className="w-full btn-primary"
+                            <EnhancedButton
+                                onClick={() => setShowBookingModal(true)}
+                                variant="primary"
+                                size="lg"
+                                className="w-full"
+                                disabled={!selectedTimeSlot || bookingLoading}
+                                loading={bookingLoading}
                             >
-                                Book Now
-                            </button>
+                                {bookingLoading ? 'Processing...' : 'Book Now'}
+                            </EnhancedButton>
 
                             <p className="text-xs text-gray-500 mt-2 text-center">
                                 Free cancellation up to 2 hours before booking time
@@ -521,22 +711,38 @@ const BoxDetails = () => {
                     </div>
 
                     <div className="flex space-x-3">
-                        <button
+                        <EnhancedButton
                             onClick={() => setShowBookingModal(false)}
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            variant="secondary"
+                            size="md"
+                            className="flex-1"
                         >
                             Cancel
-                        </button>
-                        <button
-                            onClick={confirmBooking} // This now directly calls confirmBooking
+                        </EnhancedButton>
+                        <EnhancedButton
+                            onClick={confirmBooking}
+                            variant="primary"
+                            size="md"
+                            className="flex-1"
+                            loading={bookingLoading}
                             disabled={bookingLoading}
-                            className="flex-1 btn-primary disabled:opacity-50"
                         >
-                            {bookingLoading ? 'Confirming...' : 'Confirm Booking'}
-                        </button>
+                            Confirm Booking
+                        </EnhancedButton>
                     </div>
                 </div>
             </Modal>
+
+            {/* Add Review Modal */}
+            <AddReviewForm
+                isOpen={showReviewModal}
+                onClose={() => setShowReviewModal(false)}
+                boxId={box.id}
+                onReviewAdded={handleReviewAdded}
+            />
+
+            {/* Chatbot Component */}
+            <Chatbot />
         </div>
     );
 };

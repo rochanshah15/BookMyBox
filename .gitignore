@@ -1,0 +1,134 @@
+# ================================================================
+# BOOKMYBOX PROJECT - COMPREHENSIVE GITIGNORE
+# Full-stack React + Django Application
+# ================================================================
+
+# ================================================================
+# FRONTEND (React/Vite) - project/ directory
+# ================================================================
+
+# Dependencies
+project/node_modules/
+project/dist/
+project/dist-ssr/
+project/build/
+
+# ================================================================
+# BACKEND (Django) - backend/ directory
+# ================================================================
+
+# Python
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/**/*$py.class
+backend/**/*.so
+
+# Django specific
+backend/**/db.sqlite3
+backend/**/db.sqlite3-journal
+backend/**/local_settings.py
+backend/**/media/
+backend/**/staticfiles/
+
+# ================================================================
+# ENVIRONMENT VARIABLES & SECRETS (CRITICAL)
+# ================================================================
+
+# All .env files in any directory
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+**/.env.*
+
+# Keep example templates
+!**/.env.example
+!**/.env.template
+
+# ================================================================
+# PYTHON VIRTUAL ENVIRONMENTS
+# ================================================================
+
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+**/__pycache__/
+
+# ================================================================
+# NODE.JS
+# ================================================================
+
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/dist/
+**/build/
+
+# ================================================================
+# LOGS & TEMPORARY FILES
+# ================================================================
+
+**/*.log
+**/*.tmp
+**/*.temp
+**/*.bak
+**/*.backup
+
+# ================================================================
+# EDITOR & IDE FILES
+# ================================================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ================================================================
+# OPERATING SYSTEM FILES
+# ================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ================================================================
+# SECURITY & API KEYS
+# ================================================================
+
+# API Keys and credentials files
+**/*.key
+**/*.pem
+**/secrets.json
+**/credentials.json
+
+# SSL certificates
+**/*.crt
+**/*.cer
+
+# ================================================================
+# DATABASE FILES
+# ================================================================
+
+**/*.sqlite3
+**/*.db
+
+# ================================================================
+# MEDIA & UPLOADS
+# ================================================================
+
+**/media/
+**/uploads/
+
+# ================================================================

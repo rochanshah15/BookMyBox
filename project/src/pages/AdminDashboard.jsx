@@ -214,16 +214,16 @@ const AdminDashboard = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Welcome, {user?.name}! 🛡️
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Welcome, {user?.first_name || user?.name?.split('@')[0] || user?.name || 'Admin'}! 🛡️
               </h1>
-              <p className="text-gray-600">Monitor and manage the entire BookMyBox platform</p>
+              <p className="text-gray-600 dark:text-gray-400">Monitor and manage the entire BookMyBox platform</p>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm border">
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border dark:border-gray-700">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                  <span className="text-sm font-medium">Platform Admin</span>
+                  <span className="text-sm font-medium dark:text-gray-200">Platform Admin</span>
                 </div>
               </div>
               {pendingBoxes.length > 0 && (

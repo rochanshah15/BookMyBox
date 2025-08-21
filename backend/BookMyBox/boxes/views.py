@@ -13,6 +13,23 @@ from .models import Box, Review
 from .serializers import BoxSerializer, ReviewSerializer, OwnerBoxSerializer
 from .filters import BoxFilter
 
+
+class MinLengthSearchFilter(drf_filters.SearchFilter):
+    """Custom search filter that handles searches of any length"""
+    
+    def filter_queryset(self, request, queryset, view):
+        search_terms = self.get_search_terms(request)
+        if not search_terms:
+            return queryset
+        
+        # Join all search terms and check length
+        search_string = ' '.join(search_terms).strip()
+        if not search_string:
+            return queryset
+            
+        # Allow searches of any length - remove the 2 character restriction
+        return super().filter_queryset(request, queryset, view)
+
 # Haversine function remains the same
 def haversine_distance(lat1, lon1, lat2, lon2):
     R = 6371
@@ -28,13 +45,18 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
     This viewset provides PUBLIC read-only access to approved boxes.
     It handles listing, retrieving, searching, and nearby functionality.
     """
-    queryset = Box.objects.filter(status='approved').order_by('-rating', 'name')
+    queryset = Box.objects.filter(status='approved').order_by('id')
     serializer_class = BoxSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, drf_filters.SearchFilter, drf_filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, MinLengthSearchFilter, drf_filters.OrderingFilter]
     filterset_class = BoxFilter
-    search_fields = ['name', 'sport', 'location', 'description', 'amenities']
-    ordering_fields = ['price', 'rating', 'name']
+    search_fields = ['name']  # Only search by name field
+    ordering_fields = ['price', 'rating', 'name', 'id']
+    ordering = ['id']  # Default ordering
+    
+    def get_queryset(self):
+        """Ensure we always return only approved boxes with stable ordering"""
+        return Box.objects.filter(status='approved').order_by('id')
 
     # --- ADDED THE TWO MISSING ACTIONS BELOW ---
 
@@ -50,6 +72,7 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
         featured_boxes = self.get_queryset().filter(is_featured=True)
         
         serializer = self.get_serializer(featured_boxes, many=True)
+        print("featured:", serializer.data)
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -63,6 +86,7 @@ class PublicBoxViewSet(viewsets.ReadOnlyModelViewSet):
         popular_boxes = self.get_queryset().order_by('-rating')[:10] # Gets top 10 by rating
         
         serializer = self.get_serializer(popular_boxes, many=True)
+        
         return Response(serializer.data)
 
     # --- YOUR EXISTING ACTIONS ARE UNCHANGED ---
@@ -123,12 +147,19 @@ class OwnerBoxViewSet(viewsets.ModelViewSet):
         return Box.objects.filter(owner=self.request.user).order_by('-submitted_at')
 
     def perform_create(self, serializer):
-        """
-        When an owner creates a box, set the owner automatically
-        and set the status to 'pending' for admin approval.
-        """
-        serializer.save(
+        box = serializer.save(
             owner=self.request.user,
-            status='pending',
+            status='pending',  # New boxes start as pending and require admin approval
             submitted_at=timezone.now()
         )
+        images = self.request.FILES.getlist('images')
+        # Always ensure box.images is a list
+        if not isinstance(box.images, list):
+            box.images = []
+        if images:
+            for img in images:
+                if hasattr(img, 'name'):
+                    box.images.append(img.name)
+            # Set main image as first
+            box.image = images[0]
+        box.save()

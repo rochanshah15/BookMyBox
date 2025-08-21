@@ -2,13 +2,17 @@
 
 from rest_framework import serializers
 from .models import Booking
-# No need to import BoxSerializer if we only need specific fields from Box
-# from boxes.serializers import BoxSerializer
+from boxes.serializers import BoxSerializer
 
 class BookingSerializer(serializers.ModelSerializer):
     # This will display the username from your CustomUser model
     user = serializers.StringRelatedField(read_only=True)
     user_id = serializers.PrimaryKeyRelatedField(source='user', read_only=True)
+    
+    # Include full box details in the response
+    box = BoxSerializer(read_only=True)
+    
+    # Keep these for backward compatibility
     box_name = serializers.CharField(source='box.name', read_only=True)
     box_location = serializers.CharField(source='box.location', read_only=True)
     box_sport = serializers.CharField(source='box.sport', read_only=True)
@@ -22,7 +26,6 @@ class BookingSerializer(serializers.ModelSerializer):
             'payment_status', 'payment_id', 'booking_status', 'created_at'
         ]
         read_only_fields = ['user', 'total_amount', 'payment_status', 'payment_id', 'booking_status', 'created_at']
-        # The 'box' field itself is writable, but its details are read-only via source='box.<field>'
 
     def get_box_image(self, obj):
         request = self.context.get('request')
@@ -33,3 +36,9 @@ class BookingSerializer(serializers.ModelSerializer):
             # Assuming images in the JSONField are relative paths or full URLs
             return request.build_absolute_uri(obj.box.images[0])
         return None
+
+    def to_internal_value(self, data):
+        # For creation, we still accept box ID
+        if 'boxId' in data:
+            data['box'] = data.pop('boxId')
+        return super().to_internal_value(data)
